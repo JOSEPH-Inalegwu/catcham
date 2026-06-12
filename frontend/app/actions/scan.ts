@@ -10,19 +10,29 @@ export async function scanMedia(formData: FormData) {
     const backendFormData = new FormData();
     backendFormData.append('file', file);
 
-    const response = await fetch('http://127.0.0.1:8000/predict', {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    const response = await fetch(`${backendUrl}/predict`, {
       method: 'POST',
       body: backendFormData,
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error(`Backend responded with status: ${response.status}`);
+      const message = data?.error || `Scan failed (status ${response.status})`;
+      return { error: message };
     }
 
-    const data = await response.json();
+    if (data.error) {
+      return { error: data.error };
+    }
+
     return data;
   } catch (error: any) {
     console.error('Scan Action Error:', error);
-    return { error: error.message || 'Failed to connect to scanner backend' };
+    if (error instanceof SyntaxError) {
+      return { error: 'Scanner backend returned an unreadable response.' };
+    }
+    return { error: 'Could not reach the scanner. Check your connection and try again.' };
   }
 }
