@@ -4,7 +4,7 @@ export default function CTASection() {
   return (
     <section className="border-t border-border-light px-6 py-24 md:py-32">
       <div className="mx-auto max-w-3xl text-center">
-        <h2 className="mb-6 text-2xl font-semibold leading-tight md:text-3xl lg:text-4xl">
+        <h2 className="mb-6 text-3xl font-semibold leading-tight md:text-4xl lg:text-5xl">
           Built for what is
           <br />
           <span className="text-primary">already happening.</span>
@@ -19,13 +19,13 @@ export default function CTASection() {
             href="/scan"
             className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-white transition-opacity hover:opacity-90"
           >
-            Upload a File
+            Scan a File
           </Link>
           <Link
-            href="/dashboard"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-primary/50 px-8 text-sm font-medium text-text-primary transition-colors hover:border-primary hover:bg-primary/5"
+            href="/enterprise"
+            className="text-sm text-text-secondary transition-colors hover:text-text-primary"
           >
-            Enterprise Access
+            Enterprise Access →
           </Link>
         </div>
       </div>

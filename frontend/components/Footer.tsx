@@ -20,8 +20,14 @@ export default function Footer() {
               <Link href="/scan" className="text-sm text-text-muted transition-colors hover:text-text-primary">
                 Scanner
               </Link>
-              <Link href="/scan" className="text-sm text-text-muted transition-colors hover:text-text-primary">
-                Scanner
+              <Link href="/enterprise" className="text-sm text-text-muted transition-colors hover:text-text-primary">
+                Enterprise
+              </Link>
+              <Link href="/pro" className="text-sm text-text-muted transition-colors hover:text-text-primary">
+                Pro Credits
+              </Link>
+              <Link href="/auth/signup" className="text-sm text-text-muted transition-colors hover:text-text-primary">
+                Sign up
               </Link>
             </nav>
           </div>

@@ -1,6 +1,6 @@
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
-import MetricsBar from "@/components/MetricsBar";
+import SocialProof from "@/components/SocialProof";
 import ProblemSection from "@/components/ProblemSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
 import FeaturesSection from "@/components/FeaturesSection";
@@ -14,7 +14,7 @@ export default function Home() {
       <Header />
       <main>
         <HeroSection />
-        <MetricsBar />
+        <SocialProof />
         <ProblemSection />
         <HowItWorksSection />
         <FeaturesSection />
