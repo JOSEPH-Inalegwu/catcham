@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-primary: #00E676;
-  --color-primary-dark: #00884C;
-  --color-primary-light: rgba(0, 230, 118, 0.1);
-  --color-primary-glow: rgba(0, 230, 118, 0.15);
+  --color-primary: #00A844;
+  --color-primary-dark: #007A30;
+  --color-primary-light: rgba(0, 168, 68, 0.1);
+  --color-primary-glow: rgba(0, 168, 68, 0.15);
   --color-bg-primary: #0D0D0D;
   --color-bg-secondary: #0F1117;
   --color-surface: #141414;
   --color-surface-light: #1A1A1A;
   --color-surface-elevated: #1F1F1F;
-  --color-border: rgba(0, 230, 118, 0.12);
-  --color-border-light: rgba(0, 230, 118, 0.06);
+  --color-border: rgba(0, 168, 68, 0.12);
+  --color-border-light: rgba(0, 168, 68, 0.06);
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #A0A0A0;
   --color-text-muted: #6B7280;
@@ -30,12 +30,12 @@ body {
 
 @layer utilities {
   .glow-border {
-    box-shadow: 0 0 0 1px rgba(0, 230, 118, 0.12);
+    box-shadow: 0 0 0 1px rgba(0, 168, 68, 0.12);
   }
   .glow-border-hover {
-    box-shadow: 0 0 0 1px rgba(0, 230, 118, 0.25);
+    box-shadow: 0 0 0 1px rgba(0, 168, 68, 0.25);
   }
   .text-glow {
-    text-shadow: 0 0 20px rgba(0, 230, 118, 0.3);
+    text-shadow: 0 0 20px rgba(0, 168, 68, 0.3);
   }
 }

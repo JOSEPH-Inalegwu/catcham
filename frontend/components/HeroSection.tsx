@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function HeroSection() {
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-16">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(0,230,118,0.08)_0%,_transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(0,168,68,0.08)_0%,_transparent_70%)]" />
       <div className="relative mx-auto max-w-4xl text-center">
         <h1 className="mb-6 text-4xl font-semibold leading-[1.1] tracking-tight md:text-6xl lg:text-7xl">
           Your shield against

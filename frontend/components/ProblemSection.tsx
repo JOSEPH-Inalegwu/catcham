@@ -47,7 +47,7 @@ export default function ProblemSection() {
           ))}
         </div>
         <div className="relative mt-16 overflow-hidden rounded-2xl border border-border bg-primary-light/20 px-6 py-8 md:px-10 md:py-10">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_left,_rgba(0,230,118,0.06)_0%,_transparent_70%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_left,_rgba(0,168,68,0.06)_0%,_transparent_70%)]" />
           <div className="relative grid gap-6 md:grid-cols-2 md:gap-10">
             <div>
               <div className="mb-2 text-xs font-medium uppercase tracking-wider text-text-muted">

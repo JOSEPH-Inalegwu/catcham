@@ -7,7 +7,7 @@ export type ScanResult = {
   verdict: Verdict;
   confidence: number;
   anomaly_type: string | null;
-  media_type: "video" | "audio";
+  media_type: "video" | "audio" | "image";
   analysed_at: string;
 };
 
@@ -35,8 +35,7 @@ function generateId(seed: number): string {
 function generateResult(input: string, type: "file" | "url"): ScanResult {
   const seed = hash(input);
   const isSynthetic = seed % 3 !== 0;
-  const base = 72 + (seed % 20);
-  const confidence = isSynthetic ? Math.min(99, base + 6) : base;
+  const confidence = isSynthetic ? Math.min(97, 62 + (seed % 35)) : (seed % 28) + 3;
 
   return {
     id: generateId(seed),
@@ -67,8 +66,7 @@ export async function getReport(id: string): Promise<ScanResult | null> {
   const seed = hash(id);
   if (seed === 0) return null;
   const isSynthetic = seed % 3 !== 0;
-  const base = 72 + (seed % 20);
-  const confidence = isSynthetic ? Math.min(99, base + 6) : base;
+  const confidence = isSynthetic ? Math.min(97, 62 + (seed % 35)) : (seed % 28) + 3;
   return {
     id,
     verdict: isSynthetic ? "synthetic" : "real",

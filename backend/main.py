@@ -24,6 +24,7 @@ async def predict(file: UploadFile = File(...)):
     temp_path = None
     try:
         ext = file.filename.split(".")[-1]
+        print(f"Received file: {file.filename}, processing...")
         temp_path = f"temp_{uuid.uuid4()}.{ext}"
 
         with open(temp_path, "wb") as buffer:
@@ -38,6 +39,7 @@ async def predict(file: UploadFile = File(...)):
             return {"error": "No faces detected."}
 
         label, confidence, box = result
+        print(f"Result: {label}, Confidence: {confidence}")
 
         return {
             "result": label,

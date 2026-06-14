@@ -1,10 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, type DragEvent } from "react";
+import { useState, useRef, useEffect, type DragEvent } from "react";
 import { scanMedia } from "@/app/actions/scan";
 
 const MAX_SIZE = 20 * 1024 * 1024;
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function ScanPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -12,6 +21,7 @@ export default function ScanPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFile(f: File) {
@@ -31,6 +41,33 @@ export default function ScanPage() {
     if (f) handleFile(f);
   }
 
+  useEffect(() => {
+    if (!loading) { setProgress(0); return; }
+
+    setProgress(0);
+    let current = 0;
+    let id: ReturnType<typeof setInterval>;
+
+    // 0-90%: fast
+    id = setInterval(() => {
+      current += 2;
+      setProgress(current);
+      if (current >= 90) {
+        clearInterval(id);
+        // 90-99%: slower
+        id = setInterval(() => {
+          current += 1;
+          setProgress(current);
+          if (current >= 99) {
+            clearInterval(id);
+          }
+        }, 200);
+      }
+    }, 50);
+
+    return () => clearInterval(id);
+  }, [loading]);
+
   async function handleScan() {
     if (!file) return;
     setError(null);
@@ -40,7 +77,33 @@ export default function ScanPage() {
     formData.append("file", file);
     const response = await scanMedia(formData);
 
+    if (!response.error) {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      const isAudio = ["mp3", "wav", "ogg", "flac", "aac", "m4a"].includes(ext);
+      const isImage = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff"].includes(ext);
+      const mediaType = isAudio ? "audio" : isImage ? "image" : "video";
+
+      const payload: Record<string, unknown> = {
+        confidence: response.confidence,
+        media_type: mediaType,
+        result: response.result,
+        prediction_id: response.prediction_id,
+        box: response.box,
+        analysed_at: new Date().toISOString(),
+      };
+
+      if (file.size <= 2 * 1024 * 1024) {
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          payload.preview = dataUrl;
+        } catch {}
+      }
+
+      localStorage.setItem(`catcham_scan_${response.prediction_id}`, JSON.stringify(payload));
+    }
+
     setResult(response);
+    setProgress(100);
     setLoading(false);
   }
 
@@ -51,7 +114,7 @@ export default function ScanPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col px-6 pt-24 md:pt-28">
+    <div className="flex min-h-screen flex-col px-6 pt-16 md:pt-20">
       <div className="mx-auto w-full max-w-2xl">
         <Link
           href="/"
@@ -111,13 +174,16 @@ export default function ScanPage() {
             <button
               onClick={handleScan}
               disabled={!file || loading}
-              className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-primary text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="mt-6 relative flex h-12 w-full items-center justify-center overflow-hidden rounded-full border border-primary text-sm font-medium text-text-primary transition-colors hover:bg-primary/5 disabled:opacity-40"
             >
               {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Checking for manipulation...
-                </span>
+                <>
+                  <div
+                    className="absolute inset-0 bg-primary transition-none"
+                    style={{ width: `${progress}%` }}
+                  />
+                  <span className="relative z-10 text-white">Checking for manipulation... {Math.round(progress)}%</span>
+                </>
               ) : (
                 "Run Scan"
               )}
@@ -139,32 +205,45 @@ export default function ScanPage() {
               </div>
             ) : (
               <>
-                <div className="mb-6 flex flex-col items-center gap-4 text-center">
-                  <span
-                    className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold ${
-                      result.result === "FAKE"
-                        ? "bg-red-500/10 text-red-400"
-                        : "bg-primary-light text-primary"
-                    }`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        result.result === "FAKE" ? "bg-red-400" : "bg-primary"
-                      }`}
-                    />
-                    {result.result === "FAKE" ? "Synthetic content detected" : "No synthetic content detected"}
-                  </span>
-                  <div className="text-3xl font-semibold md:text-4xl text-primary">
-                    AUTHENTIC
-                  </div>
-                  <div className="text-sm text-text-muted">
-                    {(result.confidence * 100).toFixed(2)}% Authenticity Rating
-                  </div>
-                  {result.result === "FAKE" && (
-                    <p className="max-w-sm text-xs leading-relaxed text-text-muted">
-                      Minor structural anomalies detected ({(result.confidence * 100).toFixed(2)}%), well within normal digital compression bounds. Media integrity verified.
-                    </p>
+                <div className="mb-6 flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+                  {file && (
+                    <div className="shrink-0 overflow-hidden rounded-xl border border-border-light">
+                      {file.type.startsWith("audio") ? (
+                        <div className="flex h-24 w-24 items-center justify-center bg-bg-secondary">
+                          <svg className="h-8 w-8 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" /></svg>
+                        </div>
+                      ) : (
+                        <img src={URL.createObjectURL(file)} alt="Uploaded file" className="h-24 w-24 object-cover" />
+                      )}
+                    </div>
                   )}
+                  <div className="flex flex-col items-center gap-3 sm:items-start">
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold ${
+                        result.result === "FAKE"
+                          ? "bg-red-500/10 text-red-400"
+                          : "bg-primary-light text-primary"
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          result.result === "FAKE" ? "bg-red-400" : "bg-primary"
+                        }`}
+                      />
+                      {result.result === "FAKE" ? "Synthetic content detected" : "No synthetic content detected"}
+                    </span>
+                    <div className="text-3xl font-semibold md:text-4xl text-primary">
+                      AUTHENTIC
+                    </div>
+                    <div className="text-sm text-text-muted">
+                      {(result.confidence * 100).toFixed(2)}% Authenticity Rating
+                    </div>
+                    {result.result === "FAKE" && (
+                      <p className="max-w-sm text-xs leading-relaxed text-text-muted">
+                        Minor structural anomalies detected ({(result.confidence * 100).toFixed(2)}%), well within normal digital compression bounds. Media integrity verified.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mb-6">
