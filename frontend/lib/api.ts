@@ -64,7 +64,15 @@ export async function scanFile(file: File): Promise<ScanResult> {
   }
 
   const { mediaType, result } = await response.json();
-  return parseHiveResult(result, mediaType);
+  const scanResult = parseHiveResult(result, mediaType);
+
+  await fetch("/api/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(scanResult),
+  });
+
+  return scanResult;
 }
 
 export async function scanUrl(url: string): Promise<ScanResult> {
