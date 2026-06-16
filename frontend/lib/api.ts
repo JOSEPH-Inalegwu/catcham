@@ -1,5 +1,3 @@
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-
 export type Verdict = "real" | "synthetic";
 
 export type ScanResult = {
@@ -11,68 +9,79 @@ export type ScanResult = {
   analysed_at: string;
 };
 
-const ANOMALIES = [
-  "Lip-sync tearing detected",
-  "Audio frequency spike anomaly",
-  "Facial warping artefact",
-  "Frame interpolation artefact",
-];
-
-function hash(input: string): number {
-  let h = 0;
-  for (let i = 0; i < input.length; i++) {
-    h = (h * 31 + input.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
-function generateId(seed: number): string {
+function generateId(): string {
   const ts = Date.now().toString(36).toUpperCase();
-  const suffix = seed.toString(36).toUpperCase().padStart(4, "0");
+  const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `RPT-${ts}-${suffix}`;
 }
 
-function generateResult(input: string, type: "file" | "url"): ScanResult {
-  const seed = hash(input);
-  const isSynthetic = seed % 3 !== 0;
-  const confidence = isSynthetic ? Math.min(97, 62 + (seed % 35)) : (seed % 28) + 3;
+function parseHiveResult(data: any, mediaType: string): ScanResult {
+  const outputs = data?.output ?? data?.result?.output ?? [];
+  let maxDeepfakeScore = 0;
+
+  for (const frame of outputs) {
+    for (const poly of frame.bounding_poly ?? []) {
+      for (const cls of poly.classes ?? []) {
+        if (cls.class === "yes_deepfake" || cls.class === "synthetic") {
+          maxDeepfakeScore = Math.max(maxDeepfakeScore, cls.score);
+        }
+      }
+    }
+  }
+
+  const isSynthetic = maxDeepfakeScore > 0.5;
 
   return {
-    id: generateId(seed),
+    id: generateId(),
     verdict: isSynthetic ? "synthetic" : "real",
-    confidence,
-    anomaly_type: isSynthetic ? ANOMALIES[seed % ANOMALIES.length] : null,
-    media_type: type === "url" ? "video" : "audio",
+    confidence: isSynthetic
+      ? Math.round(maxDeepfakeScore * 100)
+      : Math.round((1 - maxDeepfakeScore) * 100),
+    anomaly_type: isSynthetic ? "Synthetic media detected" : null,
+    media_type: mediaType as "video" | "audio" | "image",
     analysed_at: new Date().toISOString(),
   };
 }
 
-function delay(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 export async function scanFile(file: File): Promise<ScanResult> {
-  await delay(2200 + Math.random() * 1200);
-  return generateResult(file.name, "file");
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/scan", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? "Scan failed");
+  }
+
+  const { mediaType, result } = await response.json();
+  return parseHiveResult(result, mediaType);
 }
 
 export async function scanUrl(url: string): Promise<ScanResult> {
-  await delay(2000 + Math.random() * 1500);
-  return generateResult(url, "url");
+  const response = await fetch("/api/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? "Scan failed");
+  }
+
+  const { mediaType, result } = await response.json();
+  return parseHiveResult(result, mediaType);
 }
 
 export async function getReport(id: string): Promise<ScanResult | null> {
-  await delay(300);
-  const seed = hash(id);
-  if (seed === 0) return null;
-  const isSynthetic = seed % 3 !== 0;
-  const confidence = isSynthetic ? Math.min(97, 62 + (seed % 35)) : (seed % 28) + 3;
-  return {
-    id,
-    verdict: isSynthetic ? "synthetic" : "real",
-    confidence,
-    anomaly_type: isSynthetic ? ANOMALIES[seed % ANOMALIES.length] : null,
-    media_type: "video",
-    analysed_at: new Date(Date.now() - 60000).toISOString(),
-  };
+  const response = await fetch(`/api/report?id=${id}`);
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error("Failed to fetch report");
+  }
+  return response.json();
 }
