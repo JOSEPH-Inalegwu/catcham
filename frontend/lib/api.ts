@@ -16,28 +16,34 @@ function generateId(): string {
 }
 
 function parseHiveResult(data: any, mediaType: string): ScanResult {
-  const outputs = data?.output ?? data?.result?.output ?? [];
-  let maxDeepfakeScore = 0;
+  const content =
+    data?.choices?.[0]?.message?.content ??
+    data?.output ??
+    "";
 
-  for (const frame of outputs) {
-    for (const poly of frame.bounding_poly ?? []) {
-      for (const cls of poly.classes ?? []) {
-        if (cls.class === "yes_deepfake" || cls.class === "synthetic") {
-          maxDeepfakeScore = Math.max(maxDeepfakeScore, cls.score);
-        }
-      }
+  const trimmed = typeof content === "string" ? content.trim() : "";
+
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      return {
+        id: generateId(),
+        verdict: parsed.verdict === "synthetic" ? "synthetic" : "real",
+        confidence: Math.min(100, Math.max(0, parsed.confidence ?? 50)),
+        anomaly_type: parsed.anomaly_type ?? null,
+        media_type: mediaType as "video" | "audio" | "image",
+        analysed_at: new Date().toISOString(),
+      };
+    } catch {
+      // fall through to default
     }
   }
 
-  const isSynthetic = maxDeepfakeScore > 0.5;
-
   return {
     id: generateId(),
-    verdict: isSynthetic ? "synthetic" : "real",
-    confidence: isSynthetic
-      ? Math.round(maxDeepfakeScore * 100)
-      : Math.round((1 - maxDeepfakeScore) * 100),
-    anomaly_type: isSynthetic ? "Synthetic media detected" : null,
+    verdict: "real",
+    confidence: 50,
+    anomaly_type: null,
     media_type: mediaType as "video" | "audio" | "image",
     analysed_at: new Date().toISOString(),
   };
