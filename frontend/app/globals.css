@@ -1,20 +1,18 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-primary: #00A844;
-  --color-primary-dark: #007A30;
-  --color-primary-light: rgba(0, 168, 68, 0.1);
-  --color-primary-glow: rgba(0, 168, 68, 0.15);
-  --color-bg-primary: #0D0D0D;
-  --color-bg-secondary: #0F1117;
-  --color-surface: #141414;
-  --color-surface-light: #1A1A1A;
-  --color-surface-elevated: #1F1F1F;
-  --color-border: rgba(0, 168, 68, 0.12);
-  --color-border-light: rgba(0, 168, 68, 0.06);
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A0A0A0;
-  --color-text-muted: #6B7280;
+  --color-primary: #00d992;
+  --color-primary-soft: #2fd6a1;
+  --color-primary-deep: #10b981;
+  --color-on-primary: #101010;
+  --color-canvas: #101010;
+  --color-canvas-soft: #1a1a1a;
+  --color-ink: #f2f2f2;
+  --color-ink-strong: #ffffff;
+  --color-body: #bdbdbd;
+  --color-mute: #8b949e;
+  --color-hairline: #3d3a39;
+  --color-hairline-soft: #b8b3b0;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -24,18 +22,6 @@ html {
 }
 
 body {
-  background-color: #0D0D0D;
-  color: #FFFFFF;
-}
-
-@layer utilities {
-  .glow-border {
-    box-shadow: 0 0 0 1px rgba(0, 168, 68, 0.12);
-  }
-  .glow-border-hover {
-    box-shadow: 0 0 0 1px rgba(0, 168, 68, 0.25);
-  }
-  .text-glow {
-    text-shadow: 0 0 20px rgba(0, 168, 68, 0.3);
-  }
+  background-color: #101010;
+  color: #f2f2f2;
 }
