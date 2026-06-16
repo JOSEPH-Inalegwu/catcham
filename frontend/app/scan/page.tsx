@@ -199,7 +199,7 @@ export default function ScanPage() {
         </div>
 
         {/* ─── Result Panel (Right) ─── */}
-        <div className="rounded-[8px] border border-[#3d3a39] p-6">
+        <div className="max-h-[500px] overflow-y-auto rounded-[8px] border border-[#3d3a39] p-6">
           {!result && !scanning && (
             <div className="text-right">
               <p className="text-sm font-semibold text-[#f2f2f2]">Result</p>
@@ -242,9 +242,8 @@ export default function ScanPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#8b949e]">Verdict</span>
                 <span
-                  className={`text-sm font-semibold ${
-                    isSynthetic ? "text-[#f87171]" : "text-[#00d992]"
-                  }`}
+                  className={`text-sm font-semibold ${isSynthetic ? "text-[#f87171]" : "text-[#00d992]"
+                    }`}
                 >
                   {isSynthetic ? "Synthetic" : "Authentic"}
                 </span>
@@ -275,9 +274,8 @@ export default function ScanPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-[#8b949e]">Detection</span>
                     <span
-                      className={`text-sm font-semibold ${
-                        isSynthetic ? "text-[#f87171]" : "text-[#00d992]"
-                      }`}
+                      className={`text-sm font-semibold ${isSynthetic ? "text-[#f87171]" : "text-[#00d992]"
+                        }`}
                     >
                       {result.anomaly_type}
                     </span>
@@ -291,13 +289,12 @@ export default function ScanPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-[#8b949e]">Classification</span>
                     <span
-                      className={`rounded-[4px] px-2 py-0.5 text-xs font-semibold ${
-                        result.classification_tag === "Full Synthetic Generation"
-                          ? "bg-[#f87171]/20 text-[#f87171]"
-                          : result.classification_tag?.includes("Edited")
-                            ? "bg-[#fbbf24]/20 text-[#fbbf24]"
-                            : "bg-[#00d992]/20 text-[#00d992]"
-                      }`}
+                      className={`rounded-[4px] px-2 py-0.5 text-xs font-semibold ${result.classification_tag === "Full Synthetic Generation"
+                        ? "bg-[#f87171]/20 text-[#f87171]"
+                        : result.classification_tag?.includes("Edited")
+                          ? "bg-[#fbbf24]/20 text-[#fbbf24]"
+                          : "bg-[#00d992]/20 text-[#00d992]"
+                        }`}
                     >
                       {result.classification_tag}
                     </span>

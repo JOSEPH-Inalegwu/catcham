@@ -118,14 +118,26 @@ export async function POST(request: NextRequest) {
     const deepfakeScore = classes.find((c) => c.class === "deepfake")?.value ?? 0;
     const audioScore = classes.find((c) => c.class === "ai_generated_audio")?.value ?? 0;
 
+    const maxModelScore = Math.max(
+      ...classes
+        .filter((c) => HIVE_GENERATIVE_MODELS.has(c.class))
+        .map((c) => c.value),
+      0
+    );
+
     const visual_generation_risk = Math.round(
       Math.max(aiScore, deepfakeScore, audioScore) * 100
     );
 
-    const isSynthetic = aiScore >= 0.9 || deepfakeScore >= 0.9 || audioScore >= 0.9;
+    const isSynthetic =
+      aiScore >= 0.7 ||
+      deepfakeScore >= 0.7 ||
+      audioScore >= 0.7 ||
+      maxModelScore >= 0.5;
 
+    const maxScore = Math.max(aiScore, deepfakeScore, audioScore, maxModelScore);
     const confidence = isSynthetic
-      ? visual_generation_risk
+      ? Math.round(maxScore * 100)
       : Math.round((1 - Math.max(aiScore, deepfakeScore, audioScore)) * 100);
 
     let anomaly_type = null;
@@ -133,12 +145,12 @@ export async function POST(request: NextRequest) {
 
     if (isSynthetic) {
       const hasHighSynthesis = classes.some(
-        (c) => SYNTHESIS_MODELS.has(c.class) && c.value >= 0.8
+        (c) => HIVE_GENERATIVE_MODELS.has(c.class) && c.value >= 0.5
       );
       const hasEditTool = classes.some(
         (c) => EDIT_TOOLS.has(c.class) && c.value >= 0.01
       );
-      const hasDeepfake = deepfakeScore >= 0.9;
+      const hasDeepfake = deepfakeScore >= 0.7;
 
       if (hasHighSynthesis) {
         classificationTag = "Full Synthetic Generation";
@@ -149,7 +161,7 @@ export async function POST(request: NextRequest) {
       } else if (hasEditTool) {
         classificationTag = "AI-Edited / Background Modified Asset";
         anomaly_type = "AI-edited content detected";
-      } else if (audioScore >= 0.9) {
+      } else if (audioScore >= 0.7) {
         anomaly_type = "AI-generated voice detected";
       } else {
         anomaly_type = "AI-generated image detected";
