@@ -25,3 +25,11 @@ body {
   background-color: #101010;
   color: #f2f2f2;
 }
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}

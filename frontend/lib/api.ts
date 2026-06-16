@@ -1,10 +1,20 @@
 export type Verdict = "real" | "synthetic";
 
+export type GenerationSource = {
+  source: string;
+  label: string;
+  probability: string;
+};
+
 export type ScanResult = {
   id: string;
   verdict: Verdict;
   confidence: number;
+  visual_generation_risk: number;
+  ai_generated_score: string;
   anomaly_type: string | null;
+  classification_tag: string | null;
+  generation_sources: GenerationSource[];
   media_type: "video" | "audio" | "image";
   analysed_at: string;
 };
@@ -13,40 +23,6 @@ function generateId(): string {
   const ts = Date.now().toString(36).toUpperCase();
   const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `RPT-${ts}-${suffix}`;
-}
-
-function parseHiveResult(data: any, mediaType: string): ScanResult {
-  const content =
-    data?.choices?.[0]?.message?.content ??
-    data?.output ??
-    "";
-
-  const trimmed = typeof content === "string" ? content.trim() : "";
-
-  if (trimmed.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      return {
-        id: generateId(),
-        verdict: parsed.verdict === "synthetic" ? "synthetic" : "real",
-        confidence: Math.min(100, Math.max(0, parsed.confidence ?? 50)),
-        anomaly_type: parsed.anomaly_type ?? null,
-        media_type: mediaType as "video" | "audio" | "image",
-        analysed_at: new Date().toISOString(),
-      };
-    } catch {
-      // fall through to default
-    }
-  }
-
-  return {
-    id: generateId(),
-    verdict: "real",
-    confidence: 50,
-    anomaly_type: null,
-    media_type: mediaType as "video" | "audio" | "image",
-    analysed_at: new Date().toISOString(),
-  };
 }
 
 export async function scanFile(file: File): Promise<ScanResult> {
@@ -58,37 +34,38 @@ export async function scanFile(file: File): Promise<ScanResult> {
     body: formData,
   });
 
+  const data = await response.json();
+
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error ?? "Scan failed");
+    throw new Error(data.error ?? "Scan failed");
   }
 
-  const { mediaType, result } = await response.json();
-  const scanResult = parseHiveResult(result, mediaType);
+  const mediaType = file.type.startsWith("video/")
+    ? "video"
+    : file.type.startsWith("audio/")
+      ? "audio"
+      : "image";
+
+  const result: ScanResult = {
+    id: generateId(),
+    verdict: data.verdict === "synthetic" ? "synthetic" : "real",
+    confidence: data.confidence ?? 50,
+    visual_generation_risk: data.visual_generation_risk ?? 0,
+    ai_generated_score: data.ai_generated_score ?? "0.0%",
+    anomaly_type: data.anomaly_type ?? null,
+    classification_tag: data.classification_tag ?? null,
+    generation_sources: data.generation_sources ?? [],
+    media_type: mediaType,
+    analysed_at: new Date().toISOString(),
+  };
 
   await fetch("/api/report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(scanResult),
+    body: JSON.stringify(result),
   });
 
-  return scanResult;
-}
-
-export async function scanUrl(url: string): Promise<ScanResult> {
-  const response = await fetch("/api/scan", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error ?? "Scan failed");
-  }
-
-  const { mediaType, result } = await response.json();
-  return parseHiveResult(result, mediaType);
+  return result;
 }
 
 export async function getReport(id: string): Promise<ScanResult | null> {
