@@ -60,28 +60,38 @@ export default function Sidebar({
   active,
   onNavigate,
   collapsed,
+  tourTarget,
 }: {
   active: NavItem;
   onNavigate: (id: NavItem) => void;
   collapsed: boolean;
+  tourTarget?: string | null;
 }) {
   return (
     <aside className={`border-r border-[#3d3a39] bg-[#101010] flex flex-col transition-all duration-200 ${collapsed ? 'w-[64px]' : 'w-[240px]'}`}>
       <nav className="p-3 mt-3 space-y-4 flex-1.5">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onNavigate(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-[6px] text-sm transition-colors ${active === item.id
-              ? 'bg-[#1A1A1A] text-[#ffffff] font-semibold'
-              : 'text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#1A1A1A]/50'
-              } ${collapsed ? 'justify-center px-0' : ''}`}
-            title={collapsed ? item.label : undefined}
-          >
-            <NavIcon icon={item.icon} />
-            {!collapsed && <span>{item.label}</span>}
-          </button>
-        ))}
+        {navItems.map((item, index) => {
+          const isTourTarget = tourTarget === item.id;
+          return (
+            <button
+              key={item.id}
+              data-tour-index={index}
+              onClick={() => onNavigate(item.id)}
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-[6px] text-sm transition-all ${active === item.id
+                ? 'bg-[#1A1A1A] text-[#ffffff] font-semibold'
+                : 'text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#1A1A1A]/50'
+                } ${collapsed ? 'justify-center px-0' : ''} ${
+                isTourTarget
+                  ? 'ring-2 ring-[#00C170] ring-offset-2 ring-offset-[#101010]'
+                  : ''
+              }`}
+              title={collapsed ? item.label : undefined}
+            >
+              <NavIcon icon={item.icon} />
+              {!collapsed && <span>{item.label}</span>}
+            </button>
+          );
+        })}
       </nav>
     </aside>
   );

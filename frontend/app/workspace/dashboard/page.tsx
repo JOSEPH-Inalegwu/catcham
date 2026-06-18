@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import GlobalHeader from '@/components/dashboard/GlobalHeader';
 import Sidebar from '@/components/dashboard/Sidebar';
@@ -8,12 +8,30 @@ import type { NavItem } from '@/components/dashboard/Sidebar';
 import DashboardHeading from '@/components/dashboard/DashboardHeading';
 import OverviewContent from '@/components/dashboard/OverviewContent';
 import ForensicScannerContent from '@/components/dashboard/ForensicScannerContent';
+import TourOverlay from '@/components/dashboard/TourOverlay';
+
+const TOUR_KEY = 'catcham-tour-completed';
+const TOUR_TARGETS = ['overview', 'scanner', 'monitoring', 'billing'];
+const TOUR_TOTAL = TOUR_TARGETS.length;
 
 function DashboardContent() {
   const searchParams = useSearchParams();
   const [active, setActive] = useState<NavItem>('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [tourStep, setTourStep] = useState<number | null>(null);
+
+  useEffect(() => {
+    const completed = localStorage.getItem(TOUR_KEY);
+    if (!completed) setTourStep(0);
+  }, []);
+
+  const finishTour = () => {
+    localStorage.setItem(TOUR_KEY, 'true');
+    setTourStep(null);
+  };
+
+  const tourTarget = tourStep !== null ? TOUR_TARGETS[tourStep] : null;
 
   return (
     <div className="min-h-screen bg-[#101010] text-[#ffffff] flex flex-col">
@@ -26,6 +44,7 @@ function DashboardContent() {
             active={active}
             onNavigate={setActive}
             collapsed={sidebarCollapsed}
+            tourTarget={tourTarget}
           />
 
           <button
@@ -70,6 +89,24 @@ function DashboardContent() {
           </main>
         </div>
       </div>
+
+      {tourStep !== null && (
+        <TourOverlay
+          step={tourStep}
+          totalSteps={TOUR_TOTAL}
+          onNext={() => setTourStep(tourStep + 1)}
+          onBack={() => setTourStep(tourStep - 1)}
+          onSkip={finishTour}
+          onAction={
+            tourStep === TOUR_TOTAL - 1
+              ? () => {
+                  setActive('billing');
+                  finishTour();
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }
