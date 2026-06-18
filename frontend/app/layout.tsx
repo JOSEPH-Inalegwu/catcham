@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ModeProvider } from "@/lib/mode-context";
-import Header from "@/components/Header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,13 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CatchAm AI — Your shield against synthetic identity fraud",
+  title: "Catcham",
   description:
     "24/7 automated deepfake detection for Nigerian enterprises, public figures, and everyday Nigerians. Upload a file or paste a link. Know if it is real or synthetic before you act.",
   openGraph: {
-    title: "CatchAm AI — Your shield against synthetic identity fraud",
+    title: "Catcham",
     description:
       "24/7 automated deepfake detection. Upload a file or paste a link. Know if it is real or synthetic before you act.",
+  },
+  icons: {
+    icon: "/favicon-32x32.png",
   },
 };
 
@@ -37,7 +39,6 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-[#101010] font-sans text-[#f2f2f2]" suppressHydrationWarning>
         <ModeProvider>
-          <Header />
           {children}
         </ModeProvider>
       </body>

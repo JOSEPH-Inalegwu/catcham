@@ -8,7 +8,6 @@ import ProHero from "@/components/ProHero";
 import UseCases from "@/components/UseCases";
 import Features from "@/components/Features";
 import CtaBanner from "@/components/CtaBanner";
-import Footer from "@/components/Footer";
 import EnterpriseTarget from "@/components/EnterpriseTarget";
 import EnterprisePricing from "@/components/EnterprisePricing";
 import ExplainableAI from "@/components/ExplainableAI";
@@ -103,7 +102,6 @@ export default function Home() {
       <Features />
       {mode === "pro" && <EnterprisePricing />}
       <CtaBanner />
-      <Footer />
     </main>
   );
 }

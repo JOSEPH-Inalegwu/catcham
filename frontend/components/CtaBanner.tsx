@@ -36,7 +36,7 @@ export default function CtaBanner() {
               ) : (
                 <>
                   <Link
-                    href="/enterprise#pricing"
+                    href="/#pricing"
                     className="rounded-[6px] bg-[#00d992] px-6 py-3 text-base font-semibold text-[#101010] transition-opacity hover:opacity-90"
                   >
                     View Subscriptions

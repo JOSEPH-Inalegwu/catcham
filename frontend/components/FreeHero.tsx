@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { RevealWrapper } from 'next-reveal';
+import { useMode } from "@/lib/mode-context";
 
 export default function FreeHero() {
+  const { setMode } = useMode();
+
   return (
     <section className="px-6 py-16 sm:px-8 sm:py-20 lg:px-12">
       <div className="mx-auto grid max-w-5xl items-center gap-6 lg:grid-cols-2 lg:gap-6">
@@ -25,12 +28,20 @@ export default function FreeHero() {
               >
                 Scan a file
               </Link>
-              <Link
-                href="/#how-it-works"
+              <button
+                onClick={() => {
+                  setMode("pro");
+                  setTimeout(() => {
+                    const pricingSection = document.getElementById("pricing");
+                    if (pricingSection) {
+                      pricingSection.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }, 100);
+                }}
                 className="rounded-[6px] border border-[#3d3a39] px-6 py-3 text-base font-semibold text-[#f2f2f2] transition-colors hover:border-[#bdbdbd]"
               >
                 Explore Pro Tier
-              </Link>
+              </button>
             </div>
           </div>
         </RevealWrapper>

@@ -11,10 +11,11 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-10 sm:flex-row sm:justify-between">
           <div className="max-w-xs">
-            <Link href="/" className="text-sm font-semibold tracking-tight text-[#f2f2f2]">
-              Catch<span className="text-[#00d992]">Am</span>
+            <Link href="/" className="flex items-center gap-1 text-lg font-bold tracking-tight text-[#f2f2f2]">
+              <img src="/logo (2).png" alt="CatchAm Logo" className="h-10 w-auto" />
+              CatchAm
             </Link>
-            <p className="mt-1.5 text-xs text-[#a0a0a0]">
+            <p className="mt-2 text-xs text-[#a0a0a0]">
               Your shield against synthetic identity fraud
             </p>
           </div>
