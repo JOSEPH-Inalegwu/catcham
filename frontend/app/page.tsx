@@ -3,57 +3,25 @@
 import Link from "next/link";
 import { RevealWrapper } from 'next-reveal';
 import GridBackground from "@/components/GridBackground";
+import FreeHero from "@/components/FreeHero";
+import ProHero from "@/components/ProHero";
 import UseCases from "@/components/UseCases";
 import Features from "@/components/Features";
 import CtaBanner from "@/components/CtaBanner";
 import Footer from "@/components/Footer";
+import EnterpriseTarget from "@/components/EnterpriseTarget";
+import EnterprisePricing from "@/components/EnterprisePricing";
+import ExplainableAI from "@/components/ExplainableAI";
+import ExpertEscalation from "@/components/ExpertEscalation";
+import { useMode } from "@/lib/mode-context";
 
 export default function Home() {
+  const { mode } = useMode();
+
   return (
     <main>
       <GridBackground>
-        <section className="px-6 py-16 sm:px-8 sm:py-20 lg:px-12">
-          <div className="mx-auto grid max-w-5xl items-center gap-6 lg:grid-cols-2 lg:gap-6">
-            <RevealWrapper origin="left" delay={100} duration={800} distance="40px">
-              <div className="text-center lg:text-left">
-                <h1 className="text-5xl font-normal leading-[1.05] tracking-[-0.65px] text-[#ffffff] sm:text-6xl lg:text-[60px] lg:leading-[64px]">
-                  Your eyes can miss a deepfake.
-                  <br />
-                  <span className="text-[#00d992]">Our engines cannot.</span>
-                </h1>
-                <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-[#bdbdbd] lg:mx-0">
-                  AI-generated deepfake videos and images easily bypass standard bank security checks.
-                  Upload a file to our free scanner and know if it is real or fake before it is too late.
-                </p>
-                <div className="mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
-                  <Link
-                    href="/scan"
-                    className="rounded-[6px] bg-[#00d992] px-6 py-3 text-base font-semibold text-[#101010] transition-opacity hover:opacity-90"
-                  >
-                    Scan a file
-                  </Link>
-                  <Link
-                    href="/#how-it-works"
-                    className="rounded-[6px] border border-[#3d3a39] px-6 py-3 text-base font-semibold text-[#f2f2f2] transition-colors hover:border-[#bdbdbd]"
-                  >
-                    Explore Pro Tier
-                  </Link>
-                </div>
-              </div>
-            </RevealWrapper>
-            <RevealWrapper origin="right" delay={300} duration={800} distance="40px">
-              <div className="flex justify-center lg:justify-end">
-                <div className="">
-                  <img
-                    src="/hero.jpg"
-                    alt="CatchAm AI hero"
-                    className="h-auto w-full max-w-[420px] rounded-[8px] object-cover"
-                  />
-                </div>
-              </div>
-            </RevealWrapper>
-          </div>
-        </section>
+        {mode === "free" ? <FreeHero /> : <ProHero />}
       </GridBackground>
 
       <section id="how-it-works" className="py-20">
@@ -61,15 +29,15 @@ export default function Home() {
           <RevealWrapper origin="bottom" delay={100} duration={800} distance="40px">
             <div className="mb-12 text-center">
               <p className="text-xs font-semibold uppercase tracking-[2.52px] text-[#00d992]">
-                How It Works
+                {mode === "free" ? "How It Works" : "Defence Protocol"}
               </p>
               <h2 className="mt-2 text-2xl font-normal text-[#ffffff] sm:text-3xl">
-                Three steps to verify any file
+                {mode === "free" ? "Three steps to verify any file" : "Four-step automated security"}
               </h2>
             </div>
           </RevealWrapper>
-          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
+          <div className={`grid gap-4 sm:gap-6 ${mode === 'free' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4'}`}>
+            {(mode === "free" ? [
               {
                 step: "01",
                 title: "Upload a file",
@@ -85,12 +53,33 @@ export default function Home() {
                 title: "Get your verdict",
                 desc: "Instant on-screen authenticity rating with confidence scores and generative model attribution."
               }
-            ].map((item, i) => (
-              <RevealWrapper 
-                key={item.step} 
-                origin="bottom" 
-                delay={150 + (i * 100)} 
-                duration={800} 
+            ] : [
+              {
+                step: "01",
+                title: "Onboarding",
+                desc: "Upload verified baseline media to build an encrypted digital profile unique to your identity."
+              },
+              {
+                step: "02",
+                title: "Proactive Crawling",
+                desc: "Our engines continuously monitor Nigerian news portals, blogs, and public forums 24/7."
+              },
+              {
+                step: "03",
+                title: "Algorithmic Analysis",
+                desc: "Suspicious media is instantly processed through XceptionNet and AASIST fingerprinting."
+              },
+              {
+                step: "04",
+                title: "Instant Escalation",
+                desc: "If fraud is confirmed, emergency notifications and forensic reports are delivered directly to your team."
+              }
+            ]).map((item, i) => (
+              <RevealWrapper
+                key={item.step}
+                origin="bottom"
+                delay={150 + (i * 100)}
+                duration={800}
                 distance="30px"
                 className="h-full"
               >
@@ -107,8 +96,12 @@ export default function Home() {
         </div>
       </section>
 
+      {mode === "pro" && <EnterpriseTarget />}
       <UseCases />
+      {mode === "pro" && <ExplainableAI />}
+      {mode === "pro" && <ExpertEscalation />}
       <Features />
+      {mode === "pro" && <EnterprisePricing />}
       <CtaBanner />
       <Footer />
     </main>

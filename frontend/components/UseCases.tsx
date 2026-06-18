@@ -1,8 +1,9 @@
 "use client";
 
 import { RevealWrapper } from 'next-reveal';
+import { useMode } from "@/lib/mode-context";
 
-const cases = [
+const freeCases = [
   {
     number: "01",
     title: "Voice clone scam",
@@ -23,17 +24,41 @@ const cases = [
   },
 ];
 
+const proCases = [
+  {
+    number: "01",
+    title: "Executive Impersonation",
+    desc: "A high-fidelity clone of your CEO's voice is synthesized to authorize fraudulent transfers. CatchAm intercepts and flags the mathematical anomalies before any funds leave your accounts.",
+    image: "/executive_voice.jpg",
+  },
+  {
+    number: "02",
+    title: "Brand Defamation",
+    desc: "A fabricated video of a company official goes viral on Nigerian blogs. Our proactive 24/7 crawler detects the synthetic media before it hits mainstream news, allowing instant PR response.",
+    image: "/brand_crisis.jpg",
+  },
+  {
+    number: "03",
+    title: "Onboarding Identity Forgery",
+    desc: "A bad actor attempts to bypass KYC and liveness checks using a perfectly morphed face swap. CatchAm's API flags the synthetic manipulation at the point of entry.",
+    image: "/kyc_fraud.jpg",
+  },
+];
+
 export default function UseCases() {
+  const { mode } = useMode();
+  const cases = mode === "free" ? freeCases : proCases;
+
   return (
     <section className="px-4 py-20 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-5xl">
         <RevealWrapper origin="bottom" delay={100} duration={800} distance="40px">
           <div className="mb-20 text-center">
             <p className="text-xs font-semibold uppercase tracking-[2.52px] text-[#00d992]">
-              Real Threats
+              {mode === "free" ? "Real Threats" : "Enterprise Defense"}
             </p>
             <h2 className="mt-3 text-3xl font-normal text-[#ffffff] sm:text-4xl">
-              Deepfake fraud is already here
+              {mode === "free" ? "Deepfake fraud is already here" : "Protecting what matters most"}
             </h2>
           </div>
         </RevealWrapper>

@@ -8,9 +8,9 @@ const freeLinks = [
 ];
 
 const proLinks = [
-  { label: "Features", href: "/enterprise#features" },
-  { label: "Enterprise", href: "/enterprise" },
-  { label: "Pricing", href: "/enterprise#pricing" },
+  { label: "Features", href: "#features" },
+  { label: "Enterprise", href: "#enterprise-target" },
+  { label: "Pricing", href: "#pricing" },
 ];
 
 export default function Header() {

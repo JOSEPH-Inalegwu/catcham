@@ -1,6 +1,7 @@
 "use client";
 
 import { RevealWrapper } from 'next-reveal';
+import { useMode } from "@/lib/mode-context";
 
 const icons = {
   scan: (
@@ -50,9 +51,20 @@ const icons = {
       <path d="M7 11V7a5 5 0 0 1 9.9-1" />
     </svg>
   ),
+  code: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d992" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </svg>
+  ),
+  shield: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d992" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  )
 };
 
-const features = [
+const freeFeatures = [
   {
     title: "Multi-format scanning",
     desc: "Upload video, image, or audio files. Our engine checks every frame and waveform for synthetic manipulation.",
@@ -86,17 +98,53 @@ const features = [
   },
 ];
 
+const proFeatures = [
+  {
+    title: "24/7 Proactive Crawling",
+    desc: "Our systems continuously scan Nigerian news portals, blogs, and public directories for unauthorized synthetic media matching your profile.",
+    icon: icons.scan,
+  },
+  {
+    title: "API Integration",
+    desc: "Integrate CatchAm's multimodal detection pipeline directly into your platform. Programmatically process thousands of files simultaneously.",
+    icon: icons.code,
+  },
+  {
+    title: "Encrypted Digital Profiles",
+    desc: "Baseline media is hashed and secured via strict irreversible cryptography, aligning perfectly with Nigerian Data Protection Regulations.",
+    icon: icons.shield,
+  },
+  {
+    title: "Instant Threat Escalation",
+    desc: "Receive real-time webhook callbacks and SMS alerts the moment a high-confidence synthetic clone of your likeness is discovered.",
+    icon: icons.audio,
+  },
+  {
+    title: "Visual Forensic Reports",
+    desc: "Get explainable AI output. We generate downloadable PDFs with precise red bounding boxes drawn directly around the manipulated anomalies.",
+    icon: icons.report,
+  },
+  {
+    title: "Pay-as-you-go Buckets",
+    desc: "Don't want a subscription? Purchase buckets of 10 detailed forensic reports for just 8,000 NGN, usable anytime via our portal.",
+    icon: icons.unlock,
+  },
+];
+
 export default function Features() {
+  const { mode } = useMode();
+  const features = mode === "free" ? freeFeatures : proFeatures;
+
   return (
     <section id="features" className="py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-8 lg:px-12">
         <RevealWrapper origin="bottom" delay={100} duration={800} distance="40px">
           <div className="mb-12 text-center">
             <p className="text-xs font-semibold uppercase tracking-[2.52px] text-[#00d992]">
-              Everything You Need
+              {mode === "free" ? "Everything You Need" : "Enterprise Capabilities"}
             </p>
             <h2 className="mt-2 text-2xl font-normal text-[#ffffff] sm:text-3xl">
-              One scanner, full protection
+              {mode === "free" ? "One scanner, full protection" : "A complete security architecture"}
             </h2>
           </div>
         </RevealWrapper>

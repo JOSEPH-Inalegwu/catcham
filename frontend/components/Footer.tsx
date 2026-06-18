@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useMode } from "@/lib/mode-context";
 
 export default function Footer() {
+  const { mode } = useMode();
+
   return (
     <footer className="border-t border-[#3d3a39] px-4 py-12 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
@@ -18,19 +23,32 @@ export default function Footer() {
               <span className="text-xs font-semibold uppercase tracking-[1px] text-[#5a5a5a]">
                 Product
               </span>
-              <nav className="mt-3 flex flex-row gap-2 text-sm text-[#a0a0a0]">
-                <Link href="/scan" className="transition-colors hover:text-[#f2f2f2]">
-                  Scanner
-                </Link>
-                <Link href="/#features" className="transition-colors hover:text-[#f2f2f2]">
-                  Features
-                </Link>
-                <Link href="/#how-it-works" className="transition-colors hover:text-[#f2f2f2]">
-                  How It Works
-                </Link>
-                <Link href="/enterprise" className="transition-colors hover:text-[#f2f2f2]">
-                  Enterprise
-                </Link>
+              <nav className="mt-3 flex flex-row gap-4 text-sm text-[#a0a0a0]">
+                {mode === "pro" ? (
+                  <>
+                    <a href="#features" className="transition-colors hover:text-[#f2f2f2]">
+                      Features
+                    </a>
+                    <a href="#enterprise-target" className="transition-colors hover:text-[#f2f2f2]">
+                      Enterprise
+                    </a>
+                    <a href="#pricing" className="transition-colors hover:text-[#f2f2f2]">
+                      Pricing
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/scan" className="transition-colors hover:text-[#f2f2f2]">
+                      Scanner
+                    </Link>
+                    <Link href="/#features" className="transition-colors hover:text-[#f2f2f2]">
+                      Features
+                    </Link>
+                    <Link href="/#how-it-works" className="transition-colors hover:text-[#f2f2f2]">
+                      How It Works
+                    </Link>
+                  </>
+                )}
               </nav>
             </div>
 
