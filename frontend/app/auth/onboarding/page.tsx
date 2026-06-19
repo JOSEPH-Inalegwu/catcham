@@ -3,30 +3,46 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RevealWrapper } from 'next-reveal';
+import { useWorkspace, PlanType } from '@/app/context/WorkspaceContext';
 
 type ProfileType = 'Company' | 'Personal Brand';
 type StartAction = 'credits' | 'subscribe' | 'explore';
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { createWorkspace } = useWorkspace();
+  
   const [step, setStep] = useState(1);
   const [workspaceName, setWorkspaceName] = useState('');
+  const [industryVector, setIndustryVector] = useState('');
+  const [corporateDomain, setCorporateDomain] = useState('');
   const [profileType, setProfileType] = useState<ProfileType | null>(null);
   const [startAction, setStartAction] = useState<StartAction | null>(null);
 
-  const canAdvanceToStep2 = workspaceName.trim().length > 0 && profileType !== null;
+  const canAdvanceToStep2 = 
+    workspaceName.trim().length > 0 && 
+    profileType !== null && 
+    industryVector.trim().length > 0 &&
+    (profileType === 'Company' ? corporateDomain.trim().length > 0 : true);
 
   const handleFinish = (action: StartAction) => {
     setStartAction(action);
-    const dashboardPath = action === 'explore'
-      ? '/workspace/dashboard?mode=locked'
-      : '/workspace/dashboard?mode=credit';
-    router.push(`${dashboardPath}&type=${profileType === 'Company' ? 'enterprise' : 'pro'}&workspace=${encodeURIComponent(workspaceName)}`);
+    
+    const newWs = createWorkspace({
+      name: workspaceName.trim(),
+      plan: profileType === 'Company' ? 'enterprise' : 'pro',
+      industry: industryVector.trim(),
+      domain: corporateDomain.trim() || undefined,
+    });
+
+    // We can still pass the query param mode=locked if it's explore
+    const queryString = action === 'explore' ? '?mode=locked' : '?mode=credit';
+    router.push(`/workspace/${newWs.id}${queryString}`);
   };
 
   if (step === 1) {
     return (
-      <div className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center px-4 sm:px-6 bg-[#101010]">
+      <div className="flex min-h-[calc(100vh-56px)] flex-col items-center py-10 px-4 sm:px-6 bg-[#101010]">
         <div className="w-full max-w-[560px]">
           <RevealWrapper origin="bottom" delay={100} duration={600} distance="30px">
             <div className="mb-2">
@@ -35,18 +51,7 @@ export default function OnboardingPage() {
               <p className="text-[#A0A0A0] text-sm">Define your security environment.</p>
             </div>
 
-            <div className="mt-8 sm:mt-10 mb-6 sm:mb-8">
-              <label className="block text-xs text-[#a0a0a0] mb-2 font-mono uppercase tracking-[1.5px]">Workspace name</label>
-              <input
-                type="text"
-                value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
-                className="w-full bg-[#1A1A1A] border border-[#3d3a39] rounded-[6px] px-4 py-4 text-[#FFFFFF] text-sm focus:border-[#00C170] outline-none transition-colors"
-                placeholder="e.g. CatchAm Operations"
-              />
-            </div>
-
-            <div className="mb-8">
+            <div className="mb-8 mt-8 sm:mt-10">
               <label className="block text-xs text-[#a0a0a0] mb-3 font-mono uppercase tracking-[1.5px]">Profile type</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(['Company', 'Personal Brand'] as const).map((type) => (
@@ -66,6 +71,41 @@ export default function OnboardingPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-xs text-[#a0a0a0] mb-2 font-mono uppercase tracking-[1.5px]">Workspace name</label>
+              <input
+                type="text"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                className="w-full bg-[#1A1A1A] border border-[#3d3a39] rounded-[6px] px-4 py-4 text-[#FFFFFF] text-sm focus:border-[#00C170] outline-none transition-colors"
+                placeholder="e.g. CatchAm Operations"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-xs text-[#a0a0a0] mb-2 font-mono uppercase tracking-[1.5px]">Industry Vector</label>
+              <input
+                type="text"
+                value={industryVector}
+                onChange={(e) => setIndustryVector(e.target.value)}
+                className="w-full bg-[#1A1A1A] border border-[#3d3a39] rounded-[6px] px-4 py-4 text-[#FFFFFF] text-sm focus:border-[#00C170] outline-none transition-colors"
+                placeholder="e.g. Finance, Healthcare, Politics"
+              />
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-xs text-[#a0a0a0] mb-2 font-mono uppercase tracking-[1.5px]">
+                {profileType === 'Company' ? 'Corporate Domain (Required)' : 'Primary Web Domain (Optional)'}
+              </label>
+              <input
+                type="text"
+                value={corporateDomain}
+                onChange={(e) => setCorporateDomain(e.target.value)}
+                className="w-full bg-[#1A1A1A] border border-[#3d3a39] rounded-[6px] px-4 py-4 text-[#FFFFFF] text-sm focus:border-[#00C170] outline-none transition-colors"
+                placeholder="e.g. acme.com"
+              />
             </div>
 
             <button

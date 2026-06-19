@@ -12,7 +12,6 @@ export default function ExpertEscalation() {
           <div className="flex-1 w-full max-w-xl">
             <RevealWrapper origin="right" delay={200} duration={800} distance="40px">
               <div className="relative rounded-2xl border border-[#3d3a39] bg-[#141414] p-8 shadow-2xl overflow-hidden">
-                {/* Background glow */}
                 <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-[#00d992]/10 blur-[60px]"></div>
                 
                 <div className="relative z-10">

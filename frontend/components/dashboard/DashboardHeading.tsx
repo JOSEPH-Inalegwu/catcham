@@ -1,6 +1,8 @@
 "use client";
 
-import type { NavItem } from './Sidebar';
+import { usePathname } from 'next/navigation';
+
+export type NavItem = 'overview' | 'scanner' | 'monitoring' | 'usage' | 'billing' | 'settings';
 
 const headings: Record<NavItem, { title: string; description: string }> = {
   overview: { title: 'Overview', description: 'Security activity and workspace summary.' },
@@ -11,8 +13,13 @@ const headings: Record<NavItem, { title: string; description: string }> = {
   settings: { title: 'Settings', description: 'Workspace configuration and team access.' },
 };
 
-export default function DashboardHeading({ active }: { active: NavItem }) {
-  const h = headings[active];
+export default function DashboardHeading() {
+  const pathname = usePathname() || '';
+  const parts = pathname.split('/');
+  const activeParam = parts.length > 3 ? parts[3] : 'overview';
+  
+  const h = headings[activeParam as NavItem] || headings.overview;
+  
   return (
     <header className="px-4 md:px-8 py-5 bg-[#101010]">
       <h1 className="text-xl font-semibold tracking-tight text-[#ffffff]">{h.title}</h1>

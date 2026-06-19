@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function UserAvatar() {
+export default function UserAvatar({ onAddWorkspace }: { onAddWorkspace?: () => void }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -24,7 +24,21 @@ export default function UserAvatar() {
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute top-full mt-2 right-0 w-[280px] bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-1.5 z-20 shadow-lg">
-            <button className="w-full flex items-center gap-3 px-3 py-4 rounded-[6px] text-sm text-[#ffffff] hover:bg-[#141414]/50 transition-colors">
+            
+            <div className="px-3 py-3 bg-[#141414] rounded-[6px] mb-1.5 border border-[#3d3a39]">
+              <p className="text-xs text-[#a0a0a0] mb-1">Current Plan</p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[#ffffff]">Sandbox</span>
+                <button className="text-[10px] font-bold uppercase tracking-wider text-[#00C170] hover:text-[#00A35E] transition-colors">
+                  Upgrade
+                </button>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => { setOpen(false); onAddWorkspace?.(); }}
+              className="w-full flex items-center gap-3 px-3 py-4 rounded-[6px] text-sm text-[#ffffff] hover:bg-[#141414]/50 transition-colors"
+            >
               <svg className="w-5 h-5 text-[#a0a0a0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>

@@ -1,14 +1,17 @@
 "use client";
 
+import Link from 'next/link';
+import { usePathname, useParams } from 'next/navigation';
+
 export type NavItem = 'overview' | 'scanner' | 'monitoring' | 'usage' | 'billing' | 'settings';
 
-const navItems: { id: NavItem; label: string; icon: string }[] = [
-  { id: 'overview', label: 'Overview', icon: 'grid' },
-  { id: 'scanner', label: 'Forensic Scanner', icon: 'scan' },
-  { id: 'monitoring', label: 'Monitoring', icon: 'radar' },
-  { id: 'usage', label: 'Usage', icon: 'chart' },
-  { id: 'billing', label: 'Billing', icon: 'card' },
-  { id: 'settings', label: 'Settings', icon: 'gear' },
+const navItems: { id: NavItem; label: string; icon: string; path: string }[] = [
+  { id: 'overview', label: 'Overview', icon: 'grid', path: '' },
+  { id: 'scanner', label: 'Forensic Scanner', icon: 'scan', path: 'scanner' },
+  { id: 'monitoring', label: 'Monitoring', icon: 'radar', path: 'monitoring' },
+  { id: 'usage', label: 'Usage', icon: 'chart', path: 'usage' },
+  { id: 'billing', label: 'Billing', icon: 'card', path: 'billing' },
+  { id: 'settings', label: 'Settings', icon: 'gear', path: 'settings' },
 ];
 
 function NavIcon({ icon }: { icon: string }) {
@@ -57,27 +60,36 @@ function NavIcon({ icon }: { icon: string }) {
 }
 
 export default function Sidebar({
-  active,
-  onNavigate,
   collapsed,
   tourTarget,
+  onCloseMobile,
 }: {
-  active: NavItem;
-  onNavigate: (id: NavItem) => void;
   collapsed: boolean;
   tourTarget?: string | null;
+  onCloseMobile?: () => void;
 }) {
+  const pathname = usePathname() || '';
+  const params = useParams();
+  const workspaceId = params.workspaceId as string;
+  
+  const parts = pathname.split('/');
+  const activeParam = parts.length > 3 ? parts[3] : 'overview';
+
   return (
     <aside className={`border-r border-[#3d3a39] bg-[#101010] flex flex-col transition-all duration-200 ${collapsed ? 'w-[64px]' : 'w-[240px]'}`}>
       <nav className="p-3 mt-3 space-y-4 flex-1.5">
         {navItems.map((item, index) => {
           const isTourTarget = tourTarget === item.id;
+          const isActive = activeParam === item.id;
+          const href = `/workspace/${workspaceId}${item.path ? `/${item.path}` : ''}`;
+          
           return (
-            <button
+            <Link
+              href={href}
               key={item.id}
               data-tour-index={index}
-              onClick={() => onNavigate(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-[6px] text-sm transition-all ${active === item.id
+              onClick={onCloseMobile}
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-[6px] text-sm transition-all ${isActive
                 ? 'bg-[#1A1A1A] text-[#ffffff] font-semibold'
                 : 'text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#1A1A1A]/50'
                 } ${collapsed ? 'justify-center px-0' : ''} ${
@@ -89,7 +101,7 @@ export default function Sidebar({
             >
               <NavIcon icon={item.icon} />
               {!collapsed && <span>{item.label}</span>}
-            </button>
+            </Link>
           );
         })}
       </nav>

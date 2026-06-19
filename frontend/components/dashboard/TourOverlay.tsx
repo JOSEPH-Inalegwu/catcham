@@ -81,7 +81,7 @@ export default function TourOverlay({
         </div>
 
         <h3 className="text-sm font-semibold text-[#ffffff] mb-2">{s.title}</h3>
-        <p className="text-xs text-[#cccc] leading-relaxed mb-5">{s.description}</p>
+        <p className="text-xs text-[#ffffff] leading-relaxed mb-5">{s.description}</p>
 
         <div className="flex items-center justify-between">
           <button

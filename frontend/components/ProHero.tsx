@@ -34,7 +34,6 @@ export default function ProHero() {
         <RevealWrapper origin="right" delay={300} duration={800} distance="40px">
           <div className="flex justify-center lg:justify-end mt-12 lg:mt-0">
             <div className="relative w-full max-w-[460px]">
-              {/* Main Center Image */}
               <div className="relative z-10 mx-auto w-[85%]">
                 <img
                   src="/fakenews2.jpg"
@@ -43,7 +42,6 @@ export default function ProHero() {
                 />
               </div>
 
-              {/* Floating Element 1 - Top Right - Radar */}
               <div className="absolute -right-4 -top-8 z-20 w-[60%] sm:-right-8 sm:-top-12">
                 <RevealWrapper origin="bottom" delay={600} duration={800} distance="30px">
                   <div className="flex items-center gap-3 rounded-xl border border-[#3d3a39] bg-[#101010]/95 p-3 backdrop-blur-md shadow-2xl">
@@ -59,7 +57,6 @@ export default function ProHero() {
                 </RevealWrapper>
               </div>
 
-              {/* Floating Element 2 - Bottom Left - Alert */}
               <div className="absolute -bottom-6 -left-4 z-30 w-[65%] sm:-bottom-10 sm:-left-8">
                 <RevealWrapper origin="top" delay={800} duration={800} distance="30px">
                   <div className="flex items-center gap-3 rounded-xl border border-[#ef4444]/40 bg-[#101010]/95 p-3 backdrop-blur-md shadow-2xl">
@@ -74,7 +71,6 @@ export default function ProHero() {
                 </RevealWrapper>
               </div>
 
-              {/* Floating Element 3 - UI Badge Top Left */}
               <div className="absolute top-1/3 -left-8 z-20 sm:-left-16">
                 <RevealWrapper origin="right" delay={1000} duration={800} distance="30px">
                   <div className="flex items-center gap-3 rounded-full border border-[#00d992]/40 bg-[#101010]/90 px-4 py-2.5 backdrop-blur-md shadow-2xl">

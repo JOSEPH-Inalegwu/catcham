@@ -27,6 +27,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { WorkspaceProvider } from "./context/WorkspaceContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -38,9 +40,11 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-[#101010] font-sans text-[#f2f2f2]" suppressHydrationWarning>
-        <ModeProvider>
-          {children}
-        </ModeProvider>
+        <WorkspaceProvider>
+          <ModeProvider>
+            {children}
+          </ModeProvider>
+        </WorkspaceProvider>
       </body>
     </html>
   );

@@ -66,7 +66,6 @@ export default function ExplainableAI() {
                     alt="Explainable AI Heatmap"
                     className="h-auto w-full rounded-xl object-cover"
                   />
-                  {/* Fake Red Bounding Box Overlay for UI mockup */}
                   <div className="absolute top-[15%] left-[25%] h-[45%] w-[45%] rounded-lg border-[3px] border-[#ef4444] shadow-[0_0_20px_rgba(239,68,68,0.4)]">
                     <div className="absolute -top-7 left-0 flex items-center gap-1.5 rounded bg-[#ef4444] px-2 py-1 shadow-lg">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-white">
@@ -79,7 +78,6 @@ export default function ExplainableAI() {
                       </span>
                     </div>
                   </div>
-                  {/* Scanner overlay effect line */}
                   <div className="absolute left-0 top-[35%] h-0.5 w-full bg-[#ef4444]/60 shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
                 </div>
               </div>

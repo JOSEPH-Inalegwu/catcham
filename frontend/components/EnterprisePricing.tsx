@@ -67,7 +67,6 @@ export default function EnterprisePricing() {
           </div>
         </RevealWrapper>
 
-        {/* What's Included Banner */}
         <RevealWrapper origin="bottom" delay={200} duration={800} distance="30px">
           <div className="w-full mb-16 rounded-2xl border border-[#3d3a39] bg-[#141414] p-8 text-center sm:p-10 shadow-2xl">
             <h3 className="mb-6 text-lg font-semibold text-[#ffffff]">
@@ -88,7 +87,6 @@ export default function EnterprisePricing() {
           </div>
         </RevealWrapper>
 
-        {/* Pricing Cards */}
         <div className="grid gap-6 lg:grid-cols-3">
           {tiers.map((tier, i) => (
             <RevealWrapper key={tier.name} origin="bottom" delay={200 + i * 100} duration={800} distance="30px" className="h-full">
@@ -130,10 +128,8 @@ export default function EnterprisePricing() {
           ))}
         </div>
 
-        {/* Bucket Option */}
         <RevealWrapper origin="bottom" delay={500} duration={800} distance="30px">
           <div className="mx-auto mt-12 max-w-4xl rounded-2xl border border-[#00d992]/30 bg-[#00d992]/5 p-8 shadow-2xl sm:p-10 relative overflow-hidden">
-            {/* Glow effect */}
             <div className="absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-[#00d992]/10 blur-[80px]"></div>
             
             <div className="relative z-10 flex flex-col items-center justify-between gap-10 lg:flex-row lg:items-start">
