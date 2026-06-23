@@ -11,8 +11,16 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
+    "@tensorflow-models/blazeface": "^0.1.0",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
+    "html2canvas": "^1.4.1",
+    "jpeg-js": "^0.4.4",
+    "jspdf": "^4.2.1",
     "next": "16.2.9",
     "next-reveal": "^1.0.6",
+    "pngjs": "^7.0.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

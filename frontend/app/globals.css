@@ -30,6 +30,16 @@ body {
   to { transform: rotate(360deg); }
 }
 
+@keyframes scan-line {
+  0% { top: 0; }
+  50% { top: 100%; }
+  100% { top: 0; }
+}
+
 .animate-spin-slow {
   animation: spin-slow 2s linear infinite;
+}
+
+.animate-scan-line {
+  animation: scan-line 2.5s ease-in-out infinite;
 }

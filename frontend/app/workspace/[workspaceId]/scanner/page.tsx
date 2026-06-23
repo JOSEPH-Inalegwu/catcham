@@ -1,7 +1,7 @@
 "use client";
 
-import ForensicScannerContent from '@/components/dashboard/ForensicScannerContent';
+import ScannerPage from '@/components/dashboard/scanner/ScannerPage';
 
 export default function WorkspaceScanner() {
-  return <ForensicScannerContent />;
+  return <ScannerPage />;
 }
