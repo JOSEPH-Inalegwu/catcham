@@ -2,21 +2,13 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
-import { useRouter } from 'next/navigation';
 
 export default function UserAvatar({ onAddWorkspace }: { onAddWorkspace?: () => void }) {
   const [open, setOpen] = useState(false);
-  const { user, signOut } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
 
   const name = user?.user_metadata?.full_name ?? user?.email ?? 'User';
   const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
-
-  const handleSignOut = async () => {
-    await signOut();
-    setOpen(false);
-    router.push('/');
-  };
 
   return (
     <div className="relative">
@@ -68,14 +60,7 @@ export default function UserAvatar({ onAddWorkspace }: { onAddWorkspace?: () => 
               New Organization Workspace
             </button>
 
-            <div className="mx-3 my-1.5 border-t border-[#3d3a39]" />
 
-            <button
-              onClick={handleSignOut}
-              className="w-full text-left px-3 py-2 rounded-[6px] text-sm text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#141414]/50 transition-colors"
-            >
-              Log out
-            </button>
           </div>
         </>
       )}

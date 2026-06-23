@@ -79,14 +79,11 @@ export default function Sidebar({
   const pathname = usePathname() || '';
   const params = useParams();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const workspaceId = params.workspaceId as string;
 
   const parts = pathname.split('/');
   const activeParam = parts.length > 3 ? parts[3] : 'overview';
-
-  const name = user?.user_metadata?.full_name ?? user?.email ?? 'User';
-  const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
   const handleSignOut = async () => {
     await signOut();
@@ -180,19 +177,14 @@ export default function Sidebar({
             onClick={handleSignOut}
             className={`flex items-center gap-3 w-full rounded-[6px] transition-colors ${
               collapsed ? 'justify-center px-0 py-2' : 'px-3 py-2'
-            } hover:bg-[#262626]/50`}
-            title={collapsed ? name : undefined}
+            } hover:bg-[#262626]/50 group`}
+            title={collapsed ? 'Sign out' : 'Sign out'}
           >
-            <div className="w-7 h-7 rounded-full bg-[#00C170]/20 border border-[#3d3a39] flex items-center justify-center text-[10px] font-semibold text-[#00C170] shrink-0">
-              {initials}
-            </div>
+            <svg className="w-[18px] h-[18px] text-[#a0a0a0] group-hover:text-[#ef4444] shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
             {!collapsed && (
-              <>
-                <span className="text-sm text-[#a0a0a0] truncate flex-1 text-left">{name}</span>
-                <svg className="w-3 h-3 text-[#5a5a5a] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                </svg>
-              </>
+              <span className="text-sm text-[#a0a0a0] group-hover:text-[#ef4444] transition-colors">Sign out</span>
             )}
           </button>
         </div>
