@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type PlanType = 'pro' | 'enterprise';
+export type PlanType = 'sandbox' | 'pro' | 'enterprise';
 
 export interface Workspace {
   id: string; // The URL-safe slug
@@ -17,6 +17,8 @@ export interface WorkspaceContextType {
   workspaces: Workspace[];
   isHydrated: boolean;
   createWorkspace: (data: Omit<Workspace, 'id' | 'createdAt'>) => Workspace;
+  updateWorkspace: (id: string, data: Partial<Pick<Workspace, 'name' | 'industry' | 'domain'>>) => void;
+  deleteWorkspace: (id: string) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -77,8 +79,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return newWorkspace;
   };
 
+  const updateWorkspace = (id: string, data: Partial<Pick<Workspace, 'name' | 'industry' | 'domain'>>) => {
+    const updated = workspaces.map(w => w.id === id ? { ...w, ...data } : w);
+    setWorkspaces(updated);
+    localStorage.setItem('catcham-workspaces', JSON.stringify(updated));
+  };
+
+  const deleteWorkspace = (id: string) => {
+    const remaining = workspaces.filter(w => w.id !== id);
+    setWorkspaces(remaining);
+    localStorage.setItem('catcham-workspaces', JSON.stringify(remaining));
+  };
+
   return (
-    <WorkspaceContext.Provider value={{ workspaces, isHydrated, createWorkspace }}>
+    <WorkspaceContext.Provider value={{ workspaces, isHydrated, createWorkspace, updateWorkspace, deleteWorkspace }}>
       {children}
     </WorkspaceContext.Provider>
   );

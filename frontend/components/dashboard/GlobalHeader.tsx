@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useWorkspace, Workspace, PlanType } from '@/app/context/WorkspaceContext';
 import NotificationBell from './NotificationBell';
 import UserAvatar from './UserAvatar';
+import Modal from '@/components/Modal';
 
 function WorkspaceSwitcher({ workspaces, current, onChange }: { workspaces: Workspace[], current?: Workspace, onChange: (w: Workspace) => void }) {
   const [open, setOpen] = useState(false);
@@ -111,90 +112,87 @@ export default function GlobalHeader({ onMenuToggle }: { onMenuToggle?: () => vo
         <UserAvatar onAddWorkspace={handleAddWorkspace} />
       </div>
 
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsCreateModalOpen(false)} />
-          <div className="relative bg-[#101010] border border-[#3d3a39] rounded-[8px] w-full max-w-lg p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-[#ffffff] mb-2">Create New Organization</h3>
-            <p className="text-sm text-[#a0a0a0] mb-6">Set up a new workspace for your team or personal projects.</p>
-            
-            <form onSubmit={submitNewWorkspace}>
-              <div className="mb-4">
-                <label className="block text-xs font-mono uppercase tracking-[1.5px] text-[#a0a0a0] mb-2">Plan Type</label>
-                <div className="flex bg-[#1A1A1A] rounded-[6px] p-1 border border-[#3d3a39]">
-                  <button
-                    type="button"
-                    onClick={() => setNewWorkspacePlan('pro')}
-                    className={`flex-1 py-1.5 text-sm font-semibold rounded-[4px] transition-colors ${newWorkspacePlan === 'pro' ? 'bg-[#2a2a2a] text-[#ffffff] shadow' : 'text-[#a0a0a0] hover:text-[#ffffff]'}`}
-                  >
-                    Pro
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewWorkspacePlan('enterprise')}
-                    className={`flex-1 py-1.5 text-sm font-semibold rounded-[4px] transition-colors ${newWorkspacePlan === 'enterprise' ? 'bg-[#2a2a2a] text-[#ffffff] shadow' : 'text-[#a0a0a0] hover:text-[#ffffff]'}`}
-                  >
-                    Enterprise
-                  </button>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-xs font-mono uppercase tracking-[1.5px] text-[#a0a0a0] mb-2">Organization Name</label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={newWorkspaceName}
-                  onChange={(e) => setNewWorkspaceName(e.target.value)}
-                  placeholder="e.g. Acme Corp"
-                  className="w-full bg-[#1A1A1A] border border-[#3d3a39] rounded-[6px] px-4 py-3 text-[#ffffff] text-sm focus:border-[#00C170] outline-none transition-colors"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-xs font-mono uppercase tracking-[1.5px] text-[#a0a0a0] mb-2">Industry Vector</label>
-                <input
-                  type="text"
-                  value={newWorkspaceIndustry}
-                  onChange={(e) => setNewWorkspaceIndustry(e.target.value)}
-                  placeholder="e.g. Finance, Healthcare, Politics"
-                  className="w-full bg-[#1A1A1A] border border-[#3d3a39] rounded-[6px] px-4 py-3 text-[#ffffff] text-sm focus:border-[#00C170] outline-none transition-colors"
-                />
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-xs font-mono uppercase tracking-[1.5px] text-[#a0a0a0] mb-2">
-                  {newWorkspacePlan === 'enterprise' ? 'Corporate Domain (Required)' : 'Primary Web Domain (Optional for Reports)'}
-                </label>
-                <input
-                  type="text"
-                  value={newWorkspaceDomain}
-                  onChange={(e) => setNewWorkspaceDomain(e.target.value)}
-                  placeholder="e.g. acme.com"
-                  className="w-full bg-[#1A1A1A] border border-[#3d3a39] rounded-[6px] px-4 py-3 text-[#ffffff] text-sm focus:border-[#00C170] outline-none transition-colors"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-[6px] text-sm font-semibold text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#1A1A1A] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newWorkspaceName.trim() || !newWorkspaceIndustry.trim() || (newWorkspacePlan === 'enterprise' && !newWorkspaceDomain.trim())}
-                  className="px-4 py-2 bg-[#00C170] text-[#0A0A0A] rounded-[6px] text-sm font-semibold hover:bg-[#2FD6A1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Create Organization
-                </button>
-              </div>
-            </form>
+      <Modal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create New Organization"
+        description="Set up a new workspace for your team or personal projects."
+      >
+        <form onSubmit={submitNewWorkspace}>
+          <div className="mb-4">
+            <label className="block text-xs font-mono uppercase tracking-[1.5px] text-[#a0a0a0] mb-2">Plan Type</label>
+            <div className="flex bg-[#101010] rounded-[6px] p-1 border border-[#3d3a39]">
+              <button
+                type="button"
+                onClick={() => setNewWorkspacePlan('pro')}
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-[4px] transition-colors ${newWorkspacePlan === 'pro' ? 'bg-[#2a2a2a] text-[#ffffff] shadow' : 'text-[#a0a0a0] hover:text-[#ffffff]'}`}
+              >
+                Pro
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewWorkspacePlan('enterprise')}
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-[4px] transition-colors ${newWorkspacePlan === 'enterprise' ? 'bg-[#2a2a2a] text-[#ffffff] shadow' : 'text-[#a0a0a0] hover:text-[#ffffff]'}`}
+              >
+                Enterprise
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="mb-4">
+            <label className="block text-xs font-mono uppercase tracking-[1.5px] text-[#a0a0a0] mb-2">Organization Name</label>
+            <input
+              type="text"
+              autoFocus
+              value={newWorkspaceName}
+              onChange={(e) => setNewWorkspaceName(e.target.value)}
+              placeholder="e.g. Acme Corp"
+              className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-4 py-3 text-[#ffffff] text-sm focus:border-[#00C170] outline-none transition-colors"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-mono uppercase tracking-[1.5px] text-[#a0a0a0] mb-2">Industry Vector</label>
+            <input
+              type="text"
+              value={newWorkspaceIndustry}
+              onChange={(e) => setNewWorkspaceIndustry(e.target.value)}
+              placeholder="e.g. Finance, Healthcare, Politics"
+              className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-4 py-3 text-[#ffffff] text-sm focus:border-[#00C170] outline-none transition-colors"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs font-mono uppercase tracking-[1.5px] text-[#a0a0a0] mb-2">
+              {newWorkspacePlan === 'enterprise' ? 'Corporate Domain (Required)' : 'Primary Web Domain (Optional for Reports)'}
+            </label>
+            <input
+              type="text"
+              value={newWorkspaceDomain}
+              onChange={(e) => setNewWorkspaceDomain(e.target.value)}
+              placeholder="e.g. acme.com"
+              className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-4 py-3 text-[#ffffff] text-sm focus:border-[#00C170] outline-none transition-colors"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              className="px-4 py-2 rounded-[6px] text-sm font-semibold text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#262626] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!newWorkspaceName.trim() || !newWorkspaceIndustry.trim() || (newWorkspacePlan === 'enterprise' && !newWorkspaceDomain.trim())}
+              className="px-4 py-2 bg-[#00C170] text-[#0A0A0A] rounded-[6px] text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Create Organization
+            </button>
+          </div>
+        </form>
+      </Modal>
     </header>
   );
 }

@@ -62,24 +62,15 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
     <div className="h-screen bg-[#101010] text-[#ffffff] flex flex-col">
       <GlobalHeader onMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)} />
 
-      <div className="flex flex-1 overflow-hidden pt-[65px]">
-        {/* Desktop sidebar + crease hamburger */}
-        <div className="hidden md:block relative">
+      <div className="flex flex-1 overflow-hidden pt-[56px]">
+        {/* Desktop sidebar */}
+        <div className="hidden md:flex shrink-0">
           <Sidebar
             collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
             tourTarget={tourTarget}
             onCloseMobile={() => {}}
           />
-
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="absolute top-0 -right-3 w-8 h-8 flex items-center justify-center bg-[#101010] border border-[#3d3a39] rounded-full hover:border-[#00C170] transition-colors z-10"
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <svg className={`w-3 h-3 text-[#a0a0a0] transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-          </button>
         </div>
 
         {/* Mobile sidebar overlay */}
@@ -101,6 +92,7 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
           </div>
           <Sidebar
             collapsed={false}
+            onToggle={() => {}}
             onCloseMobile={() => setMobileSidebarOpen(false)}
           />
         </div>

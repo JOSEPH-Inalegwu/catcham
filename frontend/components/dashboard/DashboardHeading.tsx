@@ -6,7 +6,7 @@ export type NavItem = 'overview' | 'scanner' | 'monitoring' | 'usage' | 'billing
 
 const headings: Record<NavItem, { title: string; description: string }> = {
   overview: { title: 'Overview', description: 'Security activity and workspace summary.' },
-  scanner: { title: 'Forensic Scanner', description: 'Fund credits, upload files, and download forensic reports.' },
+  scanner: { title: 'Forensic Scanner', description: 'Upload media, detect synthetic content, and review per-face verdicts.' },
   monitoring: { title: 'Monitoring', description: 'Continuous web crawler surveillance targets.' },
   usage: { title: 'Usage', description: 'Tier, billing limits, and team access across organizations.' },
   billing: { title: 'Billing', description: 'Payment methods, invoices, and subscription management.' },

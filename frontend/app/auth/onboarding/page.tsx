@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RevealWrapper } from 'next-reveal';
 import { useWorkspace, PlanType } from '@/app/context/WorkspaceContext';
@@ -10,7 +10,13 @@ type StartAction = 'credits' | 'subscribe' | 'explore';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { createWorkspace } = useWorkspace();
+  const { workspaces, createWorkspace } = useWorkspace();
+
+  useEffect(() => {
+    if (workspaces.length > 0) {
+      router.replace(`/workspace/${workspaces[0].id}`);
+    }
+  }, [workspaces, router]);
   
   const [step, setStep] = useState(1);
   const [workspaceName, setWorkspaceName] = useState('');

@@ -158,35 +158,37 @@ export default function UsageContent() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-        <div className="rounded-[10px] border border-[#2A2A2A] bg-[#101010] p-6 flex flex-col justify-between">
-          <span className="text-xs text-[#a0a0a0] font-medium uppercase tracking-wider mb-2">Scans Today</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+          <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-2">Scans Today</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-mono text-[#ffffff] tracking-tight">
+            <span className="text-3xl font-semibold text-[#ffffff] tracking-tight">
               {rows.filter(r => 
                 r.date === new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
               ).length}
             </span>
-            <span className="text-sm text-[#5a5a5a] font-mono">/ {tierLimits[currentTier as keyof typeof tierLimits].scansPerDay}</span>
+            <span className="text-sm text-[#5a5a5a]">/ {tierLimits[currentTier as keyof typeof tierLimits].scansPerDay}</span>
           </div>
         </div>
 
-        <div className="rounded-[10px] border border-[#2A2A2A] bg-[#101010] p-6 flex flex-col justify-between">
-          <span className="text-xs text-[#a0a0a0] font-medium uppercase tracking-wider mb-2">Credits Remaining</span>
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+          <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-2">Credits Used</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-mono text-[#ffffff] tracking-tight">
-              {tierLimits[currentTier as keyof typeof tierLimits].credits === 'Unlimited'
-                ? '∞'
-                : `${(tierLimits[currentTier as keyof typeof tierLimits].credits as number) - totalCreditsUsed}`}
+            <span className="text-3xl font-semibold text-[#ffffff] tracking-tight">
+              {totalCreditsUsed}
             </span>
+            <span className="text-sm text-[#5a5a5a]">/ {tierLimits[currentTier as keyof typeof tierLimits].credits === 'Unlimited' ? '∞' : tierLimits[currentTier as keyof typeof tierLimits].credits}</span>
+          </div>
+          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[#3d3a39]">
+            <div className="h-full rounded-full bg-[#00C170] transition-all" style={{ width: `${Math.min((totalCreditsUsed / (typeof tierLimits[currentTier as keyof typeof tierLimits].credits === 'number' ? (tierLimits[currentTier as keyof typeof tierLimits].credits as number) : 100)) * 100, 100)}%` }} />
           </div>
         </div>
 
-        <div className="rounded-[10px] border border-[#2A2A2A] bg-[#101010] p-6 flex flex-col justify-between">
-          <span className="text-xs text-[#a0a0a0] font-medium uppercase tracking-wider mb-2">Current Tier</span>
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+          <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-2">Current Tier</p>
           <div className="flex items-center gap-3">
-            <span className="text-xl font-medium text-[#ffffff] tracking-tight">{currentTier}</span>
-            <span className="px-2 py-0.5 rounded-full bg-[#00d992]/10 text-[#00d992] text-[10px] font-medium uppercase tracking-wider">
+            <span className="text-xl font-semibold text-[#ffffff] tracking-tight">{currentTier}</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-[#00C170]/20 text-[#00C170]">
               Active
             </span>
           </div>
@@ -195,34 +197,34 @@ export default function UsageContent() {
 
       <div className="space-y-4 mt-6">
         {rows.length === 0 ? (
-          <div className="rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] p-8 text-center">
+          <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-8 text-center">
             <p className="text-sm text-[#5a5a5a]">No usage data for this range.</p>
           </div>
         ) : (
           <>
-            <div className="hidden md:block rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] overflow-hidden">
+            <div className="hidden md:block bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#3d3a39] bg-[#141414]/50">
+                  <tr className="border-b border-[#3d3a39]">
                     {['Date', 'Type', 'Details', 'Credits', 'Status'].map((h) => (
-                      <th key={h} className="text-left text-xs text-[#a0a0a0] font-medium px-5 py-3.5 whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] font-medium px-5 py-3.5 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#3d3a39]">
                   {paged.map((r, i) => (
-                    <tr key={i} className="hover:bg-[#141414]/80 transition-colors">
+                    <tr key={i} className="hover:bg-[#262626]/50 transition-colors">
                       <td className="px-5 py-4 text-[#ffffff] whitespace-nowrap">{r.date}</td>
                       <td className="px-5 py-4 text-[#a0a0a0] whitespace-nowrap">{r.type}</td>
                       <td className="px-5 py-4 text-[#a0a0a0] whitespace-nowrap max-w-[200px] truncate">{r.details}</td>
                       <td className="px-5 py-4 text-[#ffffff] whitespace-nowrap font-medium">{r.credits}</td>
                       <td className="px-5 py-4 whitespace-nowrap">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          r.status === 'completed' ? 'bg-[#00C170]/10 text-[#00C170]' :
-                          r.status === 'failed' ? 'bg-[#f87171]/10 text-[#f87171]' :
-                          'bg-[#fbbf24]/10 text-[#fbbf24]'
+                        <span className={`text-[10px] px-2 py-1 rounded-full font-semibold uppercase tracking-wider ${
+                          r.status === 'completed' ? 'bg-[#00C170]/20 text-[#00C170]' :
+                          r.status === 'failed' ? 'bg-[#ef4444]/20 text-[#ef4444]' :
+                          'bg-[#fbbf24]/20 text-[#fbbf24]'
                         }`}>
-                          {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                          {r.status}
                         </span>
                       </td>
                     </tr>
@@ -233,7 +235,7 @@ export default function UsageContent() {
 
             <div className="md:hidden space-y-3">
               {paged.map((r, i) => (
-                <div key={i} className="rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] p-4 flex flex-col gap-3">
+                <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 flex flex-col gap-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-sm font-semibold text-[#ffffff]">{r.type}</p>
@@ -258,7 +260,7 @@ export default function UsageContent() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-2 bg-[#1A1A1A] border border-[#3d3a39] rounded-[12px]">
+              <div className="flex items-center justify-between px-4 py-2 bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px]">
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
@@ -274,8 +276,8 @@ export default function UsageContent() {
                       onClick={() => setPage(i + 1)}
                       className={`w-8 h-8 text-xs rounded-[6px] transition-colors ${
                         page === i + 1
-                          ? 'bg-[#00d992] text-[#101010] font-medium'
-                          : 'text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#141414]'
+                          ? 'bg-[#00C170] text-[#0A0A0A] font-semibold'
+                          : 'text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#262626]/50'
                       }`}
                     >
                       {i + 1}

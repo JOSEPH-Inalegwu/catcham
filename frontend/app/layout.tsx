@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ModeProvider } from "@/lib/mode-context";
+import { WorkspaceProvider } from "./context/WorkspaceContext";
+import { AuthProvider } from "./context/AuthContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,8 +29,6 @@ export const metadata: Metadata = {
   },
 };
 
-import { WorkspaceProvider } from "./context/WorkspaceContext";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,11 +40,13 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-[#101010] font-sans text-[#f2f2f2]" suppressHydrationWarning>
-        <WorkspaceProvider>
-          <ModeProvider>
-            {children}
-          </ModeProvider>
-        </WorkspaceProvider>
+        <AuthProvider>
+          <WorkspaceProvider>
+            <ModeProvider>
+              {children}
+            </ModeProvider>
+          </WorkspaceProvider>
+        </AuthProvider>
       </body>
     </html>
   );

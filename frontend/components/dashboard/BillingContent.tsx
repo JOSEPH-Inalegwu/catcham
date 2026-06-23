@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import Modal from '@/components/Modal';
 
 type BillingTab = 'credits' | 'recharge' | 'payment' | 'history';
 
@@ -29,45 +30,44 @@ const invoices = [
 
 function CreditBalanceCard() {
   return (
-    <div className="rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] p-6 md:p-8 flex items-center justify-between">
-      <div>
-        <p className="text-xs md:text-sm text-[#a0a0a0] font-mono mb-1 md:mb-2">Credit Balance</p>
-        <p className="text-4xl md:text-5xl font-semibold text-[#ffffff] tracking-tight">0</p>
-        <p className="text-xs md:text-sm text-[#5a5a5a] mt-1 md:mt-2">0 / 0 reports remaining</p>
+    <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-6">
+      <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-3">Credit Balance</p>
+      <div className="flex items-baseline gap-2">
+        <p className="text-4xl font-semibold text-[#ffffff] tracking-tight">0</p>
+        <p className="text-sm text-[#5a5a5a]">reports</p>
       </div>
-      <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-[#00C170]/10 border border-[#00C170]/20 flex items-center justify-center">
-        <svg className="w-6 h-6 md:w-8 md:h-8 text-[#00C170]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
-        </svg>
+      <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[#3d3a39]">
+        <div className="h-full rounded-full bg-[#00C170] transition-all" style={{ width: '0%' }} />
       </div>
+      <p className="text-xs text-[#5a5a5a] mt-2">0 / 0 reports used this period</p>
     </div>
   );
 }
 
 function AddCreditsTab() {
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] p-5 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0">
+    <div className="space-y-4">
+      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <p className="text-base md:text-lg font-semibold text-[#ffffff]">10 Forensic Reports</p>
-          <p className="text-xs md:text-sm text-[#a0a0a0] mt-1">Per-report deepfake analysis</p>
+          <p className="text-sm font-semibold text-[#ffffff]">10 Forensic Reports</p>
+          <p className="text-xs text-[#a0a0a0] mt-0.5">Per-report deepfake analysis</p>
         </div>
-        <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto border-t border-[#3d3a39] pt-4 md:border-none md:pt-0">
-          <span className="text-xl md:text-2xl font-semibold text-[#ffffff]">₦8,000</span>
-          <button className="px-4 py-2.5 md:px-6 md:py-3 text-xs md:text-sm font-medium text-[#ffffff] bg-[#00C170] rounded-[8px] hover:bg-[#00A35E] transition-colors">
+        <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#3d3a39]">
+          <span className="text-xl font-semibold text-[#ffffff]">₦8,000</span>
+          <button className="px-4 py-2 text-sm font-semibold text-[#0A0A0A] bg-[#00C170] rounded-[6px] hover:opacity-90 transition-opacity">
             Buy Credits
           </button>
         </div>
       </div>
 
-      <div className="rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] p-5 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0">
+      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <p className="text-base md:text-lg font-semibold text-[#ffffff]">Proactive Surveillance</p>
-          <p className="text-xs md:text-sm text-[#a0a0a0] mt-1">Full web crawler monitoring + unlimited reports</p>
+          <p className="text-sm font-semibold text-[#ffffff]">Proactive Surveillance</p>
+          <p className="text-xs text-[#a0a0a0] mt-0.5">Full web crawler monitoring + unlimited reports</p>
         </div>
-        <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto border-t border-[#3d3a39] pt-4 md:border-none md:pt-0">
-          <span className="text-xl md:text-2xl font-semibold text-[#ffffff]">₦75,000<span className="text-xs md:text-sm text-[#a0a0a0] font-normal">/mo</span></span>
-          <button className="px-4 py-2.5 md:px-6 md:py-3 text-xs md:text-sm font-medium text-[#ffffff] bg-[#00C170] rounded-[8px] hover:bg-[#00A35E] transition-colors">
+        <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#3d3a39]">
+          <span className="text-xl font-semibold text-[#ffffff]">₦75,000<span className="text-xs text-[#a0a0a0] font-normal">/mo</span></span>
+          <button className="px-4 py-2 text-sm font-semibold text-[#0A0A0A] bg-[#00C170] rounded-[6px] hover:opacity-90 transition-opacity">
             Subscribe Now
           </button>
         </div>
@@ -83,7 +83,7 @@ function AutoRechargeTab() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[10px] border border-[#3d3a39] bg-[#1A1A1A] p-5">
+      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-sm font-semibold text-[#ffffff]">Auto-Recharge</p>
@@ -134,78 +134,17 @@ function AutoRechargeTab() {
   );
 }
 
-function CardModal({ onClose }: { onClose: () => void }) {
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/60 z-40" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-[400px] bg-[#1A1A1A] border border-[#3d3a39] rounded-[12px] p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-sm font-semibold text-[#ffffff]">Add payment card</h3>
-            <button onClick={onClose} className="p-1 hover:bg-[#141414] rounded-[6px] transition-colors">
-              <svg className="w-4 h-4 text-[#a0a0a0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-[#a0a0a0] mb-1.5 block">Card number</label>
-              <input
-                type="text"
-                placeholder="4242 4242 4242 4242"
-                className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#141414] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-[#a0a0a0] mb-1.5 block">Expiry</label>
-                <input
-                  type="text"
-                  placeholder="MM/YY"
-                  className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#141414] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-[#a0a0a0] mb-1.5 block">CVC</label>
-                <input
-                  type="text"
-                  placeholder="123"
-                  className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#141414] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-[#a0a0a0] mb-1.5 block">Cardholder name</label>
-              <input
-                type="text"
-                placeholder="Joseph Jonah"
-                className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#141414] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
-              />
-            </div>
-          </div>
-
-          <button className="w-full mt-5 py-2.5 text-sm font-medium text-[#ffffff] bg-[#00C170] rounded-[6px] hover:bg-[#00A35E] transition-colors">
-            Add card
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
 function PaymentMethodTab() {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[10px] border border-[#3d3a39] bg-[#1A1A1A] p-5">
+      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-[#ffffff]">Saved cards</p>
           <button
             onClick={() => setModalOpen(true)}
-            className="px-3 py-1.5 text-xs font-medium text-[#ffffff] bg-[#00C170] rounded-[6px] hover:bg-[#00A35E] transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold text-[#0A0A0A] bg-[#00C170] rounded-[6px] hover:opacity-90 transition-opacity"
           >
             + Add card
           </button>
@@ -216,7 +155,7 @@ function PaymentMethodTab() {
         ) : (
           <div className="space-y-2">
             {savedCards.map((card) => (
-              <div key={card.id} className="flex items-center justify-between p-3 rounded-[8px] border border-[#3d3a39] bg-[#141414]">
+              <div key={card.id} className="flex items-center justify-between p-3 rounded-[6px] border border-[#3d3a39] bg-[#101010]">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-7 rounded-[4px] bg-gradient-to-br from-[#00C170]/20 to-[#1A7A4A]/20 border border-[#3d3a39] flex items-center justify-center text-[10px] font-mono text-[#a0a0a0]">
                     {card.brand === 'Visa' ? 'VISA' : 'MC'}
@@ -236,7 +175,49 @@ function PaymentMethodTab() {
         )}
       </div>
 
-      {modalOpen && <CardModal onClose={() => setModalOpen(false)} />}
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Add payment card">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-[#a0a0a0] mb-1.5 block">Card number</label>
+            <input
+              type="text"
+              placeholder="4242 4242 4242 4242"
+              className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-[#a0a0a0] mb-1.5 block">Expiry</label>
+              <input
+                type="text"
+                placeholder="MM/YY"
+                className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#a0a0a0] mb-1.5 block">CVC</label>
+              <input
+                type="text"
+                placeholder="123"
+                className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-[#a0a0a0] mb-1.5 block">Cardholder name</label>
+            <input
+              type="text"
+              placeholder="Joseph Jonah"
+              className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
+            />
+          </div>
+        </div>
+        <div className="mt-5">
+          <button className="w-full py-2.5 text-sm font-semibold text-[#0A0A0A] bg-[#00C170] rounded-[6px] hover:opacity-90 transition-opacity">
+            Add card
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -250,28 +231,32 @@ function HistoryTab() {
   return (
     <div className="space-y-4">
       {invoices.length === 0 ? (
-        <div className="rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] p-5 text-center">
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 text-center">
           <p className="text-xs text-[#5a5a5a]">No transaction history yet.</p>
         </div>
       ) : (
         <>
-          <div className="hidden md:block rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] overflow-hidden">
+          <div className="hidden md:block bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#3d3a39] bg-[#141414]/50">
+                <tr className="border-b border-[#3d3a39]">
                   {['Date', 'Amount', 'Payment Method', 'Status', 'Charge Type'].map((h) => (
-                    <th key={h} className="text-left text-xs text-[#a0a0a0] font-medium px-5 py-3.5 whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] font-medium px-5 py-3.5 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#3d3a39]">
                 {paged.map((inv, i) => (
-                  <tr key={i} className="hover:bg-[#141414]/80 transition-colors">
+                  <tr key={i} className="hover:bg-[#262626]/50 transition-colors">
                     <td className="px-5 py-4 text-[#ffffff] whitespace-nowrap">{inv.date}</td>
                     <td className="px-5 py-4 text-[#ffffff] whitespace-nowrap font-medium">{inv.amount}</td>
                     <td className="px-5 py-4 text-[#a0a0a0] whitespace-nowrap">{inv.method}</td>
                     <td className="px-5 py-4 whitespace-nowrap">
-                      <span className={`text-xs px-2 py-1 rounded-full ${inv.status === 'Completed' ? 'bg-[#00C170]/10 text-[#00C170]' : 'text-[#a0a0a0]'}`}>
+                      <span className={`text-[10px] px-2 py-1 rounded-full font-semibold uppercase tracking-wider ${
+                        inv.status === 'Completed'
+                          ? 'bg-[#00C170]/20 text-[#00C170]'
+                          : 'text-[#a0a0a0] bg-[#3d3a39]/50'
+                      }`}>
                         {inv.status}
                       </span>
                     </td>
@@ -284,7 +269,7 @@ function HistoryTab() {
 
           <div className="md:hidden space-y-3">
             {paged.map((inv, i) => (
-              <div key={i} className="rounded-[12px] border border-[#3d3a39] bg-[#1A1A1A] p-4 flex flex-col gap-3">
+              <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 flex flex-col gap-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm font-semibold text-[#ffffff]">{inv.chargeType === '-' ? 'Transaction' : inv.chargeType}</p>
@@ -292,7 +277,11 @@ function HistoryTab() {
                   </div>
                   <div className="text-right">
                     <p className="text-base font-semibold text-[#ffffff]">{inv.amount}</p>
-                    <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full ${inv.status === 'Completed' ? 'bg-[#00C170]/10 text-[#00C170]' : 'text-[#a0a0a0]'}`}>
+                    <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
+                      inv.status === 'Completed'
+                        ? 'bg-[#00C170]/20 text-[#00C170]'
+                        : 'text-[#a0a0a0] bg-[#3d3a39]/50'
+                    }`}>
                       {inv.status}
                     </span>
                   </div>
@@ -305,7 +294,7 @@ function HistoryTab() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-2 bg-[#1A1A1A] border border-[#3d3a39] rounded-[12px]">
+            <div className="flex items-center justify-between px-4 py-2 bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px]">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
@@ -339,10 +328,11 @@ export default function BillingContent() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2.5 text-sm transition-colors border-b-2 -mb-[1px] ${tab === t.id
+            className={`px-4 py-2.5 text-sm transition-colors border-b-2 -mb-[1px] ${
+              tab === t.id
                 ? 'text-[#ffffff] border-[#00C170] font-medium'
                 : 'text-[#a0a0a0] border-transparent hover:text-[#ffffff]'
-              }`}
+            }`}
           >
             {t.label}
           </button>

@@ -69,7 +69,7 @@ export default function TourOverlay({
     <>
       <div className="fixed inset-0 bg-black/20 z-40" onClick={onSkip} />
       <div
-        className="fixed z-50 w-[380px] bg-[#1A1A1A] border border-[#00C170]/30 rounded-[10px] p-5 shadow-xl"
+        className="fixed z-50 w-[380px] bg-[#1A1A1A] border border-[#00C170]/30 rounded-[8px] p-5 shadow-xl"
         style={{
           top: pos.top,
           left: pos.left,
