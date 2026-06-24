@@ -52,13 +52,13 @@ export default function TourOverlay({
   onSkip: () => void;
   onAction?: () => void;
 }) {
-  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     const el = document.querySelector(`[data-tour-index="${step}"]`);
     if (el) {
       const rect = el.getBoundingClientRect();
-      setPos({ top: rect.top + rect.height / 2, left: rect.right + 16 });
+      setTargetRect(rect);
     }
   }, [step]);
 
@@ -67,12 +67,44 @@ export default function TourOverlay({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/20 z-40" onClick={onSkip} />
+      {/* Spotlight backdrop — dims everything except the target */}
+      {targetRect && (
+        <svg className="fixed inset-0 w-full h-full z-40 pointer-events-auto" onClick={onSkip}>
+          <defs>
+            <mask id="tour-spotlight">
+              <rect width="100%" height="100%" fill="white" />
+              <rect
+                x={targetRect.left}
+                y={targetRect.top}
+                width={targetRect.width}
+                height={targetRect.height}
+                fill="black"
+                rx={8}
+              />
+            </mask>
+          </defs>
+          <rect width="100%" height="100%" fill="black" fillOpacity="0.6" mask="url(#tour-spotlight)" />
+        </svg>
+      )}
+
+      {/* Highlight ring around target */}
+      {targetRect && (
+        <div
+          className="fixed z-40 pointer-events-none rounded-[8px] border-2 border-[#00C170]"
+          style={{
+            top: targetRect.top - 2,
+            left: targetRect.left - 2,
+            width: targetRect.width + 4,
+            height: targetRect.height + 4,
+          }}
+        />
+      )}
+
       <div
         className="fixed z-50 w-[380px] bg-[#1A1A1A] border border-[#00C170]/30 rounded-[8px] p-5 shadow-xl"
         style={{
-          top: pos.top,
-          left: pos.left,
+          top: targetRect ? targetRect.top + targetRect.height / 2 : 0,
+          left: targetRect ? targetRect.right + 16 : 0,
           transform: 'translateY(-50%)',
         }}
       >

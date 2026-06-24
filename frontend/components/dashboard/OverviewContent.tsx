@@ -1,58 +1,60 @@
 "use client";
 
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { Skeleton } from '@/components/Skeleton';
 
-const metrics = [
-  { label: 'Total Scans', value: '142', change: '+12%', color: '#00C170' },
-  { label: 'Threats Detected', value: '23', change: '+8%', color: '#ef4444' },
-  { label: 'Files Cleared', value: '119', change: '+14%', color: '#00C170' },
-  { label: 'Active Monitoring', value: '7', change: '+2', color: '#fbbf24' },
-];
+type OverviewData = {
+  metrics: {
+    totalScans: number;
+    threatsDetected: number;
+    filesCleared: number;
+    suspiciousCount: number;
+    activeMonitoring: number;
+  };
+  detectionRatio: { authentic: number; suspicious: number; synthetic: number };
+  confidenceBands: { high: number; medium: number; low: number };
+  flaggedItems: {
+    id: string;
+    file_name: string;
+    file_type: string;
+    verdict: string;
+    confidence: number;
+    anomaly_type: string | null;
+    analysed_at: string;
+  }[];
+};
 
-const detectionRatio = { real: 119, synthetic: 23 };
-const total = detectionRatio.real + detectionRatio.synthetic;
-const realPct = Math.round((detectionRatio.real / total) * 100);
-const synthPct = 100 - realPct;
-
-const confidenceBands = [
-  { label: 'High (>80%)', count: 18, pct: 78, color: '#00C170' },
-  { label: 'Medium (50–80%)', count: 4, pct: 17, color: '#fbbf24' },
-  { label: 'Low (<50%)', count: 1, pct: 5, color: '#ef4444' },
-];
-
-const flaggedItems = [
-  { id: '1', file: 'ceo_voice_note.m4a', date: '22 Jun 2026, 14:32', confidence: 97 },
-  { id: '2', file: 'phone_call.wav', date: '20 Jun 2026, 16:08', confidence: 94 },
-  { id: '3', file: 'social_media_clip.mp4', date: '19 Jun 2026, 22:30', confidence: 92 },
-];
-
-function DonutChart() {
+function DonutChart({ authentic, suspicious, synthetic }: { authentic: number; suspicious: number; synthetic: number }) {
+  const a = authentic || 0;
+  const s = suspicious || 0;
+  const syn = synthetic || 0;
+  const total = a + s + syn || 1;
+  const aPct = Math.round((a / total) * 100);
+  const sPct = Math.round((s / total) * 100);
+  const synPct = 100 - Math.max(0, aPct) - Math.max(0, sPct);
   const r = 60;
   const circ = 2 * Math.PI * r;
-  const realOffset = circ * (1 - realPct / 100);
-  const gap = 3;
+  const gap = 2;
+
+  const aOffset = 0;
+  const sOffset = -((aPct / 100) * circ + gap);
+  const synOffset = -(((aPct + sPct) / 100) * circ + gap * 2);
 
   return (
     <div className="relative flex items-center justify-center w-[160px] h-[160px] mx-auto">
       <svg className="w-[160px] h-[160px] -rotate-90" viewBox="0 0 140 140">
         <circle cx="70" cy="70" r={r} fill="none" stroke="#1A1A1A" strokeWidth="18" />
-        <circle
-          cx="70" cy="70" r={r}
-          fill="none" stroke="#00C170" strokeWidth="18"
-          strokeLinecap="round"
-          strokeDasharray={`${circ - gap} ${circ}`}
-          strokeDashoffset={0}
-          className="transition-all duration-700"
-        />
-        <circle
-          cx="70" cy="70" r={r}
-          fill="none" stroke="#ef4444" strokeWidth="18"
-          strokeLinecap="round"
-          strokeDasharray={`${(synthPct / 100) * circ - gap} ${circ}`}
-          strokeDashoffset={-((realPct / 100) * circ + gap)}
-          className="transition-all duration-700"
-        />
+        {aPct > 0 && (
+          <circle cx="70" cy="70" r={r} fill="none" stroke="#00C170" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(aPct / 100) * circ - gap} ${circ}`} strokeDashoffset={aOffset} className="transition-all duration-700" />
+        )}
+        {sPct > 0 && (
+          <circle cx="70" cy="70" r={r} fill="none" stroke="#fbbf24" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(sPct / 100) * circ - gap} ${circ}`} strokeDashoffset={sOffset} className="transition-all duration-700" />
+        )}
+        {synPct > 0 && (
+          <circle cx="70" cy="70" r={r} fill="none" stroke="#ef4444" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(synPct / 100) * circ - gap} ${circ}`} strokeDashoffset={synOffset} className="transition-all duration-700" />
+        )}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-2xl font-semibold text-[#ffffff]">{total}</span>
@@ -62,15 +64,10 @@ function DonutChart() {
   );
 }
 
-function MetricCard({ label, value, change, color }: { label: string; value: string; change: string; color: string }) {
+function MetricCard({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
     <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">{label}</p>
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ backgroundColor: `${color}15`, color }}>
-          {change}
-        </span>
-      </div>
+      <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-3">{label}</p>
       <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{value}</p>
     </div>
   );
@@ -79,30 +76,152 @@ function MetricCard({ label, value, change, color }: { label: string; value: str
 export default function OverviewContent() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<OverviewData | null>(null);
+
+  const fetchOverview = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/overview`);
+      const json = await res.json();
+      setData(json);
+    } catch {
+      // Silently handle fetch errors
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
+    fetchOverview();
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchOverview();
+    }, 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchOverview(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [fetchOverview]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+              <Skeleton className="h-3 w-24 mb-3" />
+              <Skeleton className="h-8 w-16" />
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+            <Skeleton className="h-3 w-28 mb-6" />
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <Skeleton className="w-[160px] h-[160px] rounded-full shrink-0" />
+              <div className="space-y-3 w-full sm:w-auto">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+            <Skeleton className="h-3 w-36 mb-6" />
+            <div className="space-y-5">
+              {[1, 2, 3].map((i) => (
+                <div key={i}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <Skeleton className="h-2 w-full rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px]">
+          <div className="px-5 py-4 border-b border-[#3d3a39]">
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-1.5 h-1.5 rounded-full" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+          <div className="divide-y divide-[#3d3a39]">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="px-5 py-3.5 flex items-center justify-between">
+                <div className="min-w-0 flex-1 mr-3 space-y-1.5">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-3 w-10" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+              <Skeleton className="h-4 w-24 mb-1.5" />
+              <Skeleton className="h-3 w-44" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const m = data?.metrics;
+  const dr = data?.detectionRatio ?? { authentic: 0, suspicious: 0, synthetic: 0 };
+  const cb = data?.confidenceBands ?? { high: 0, medium: 0, low: 0 };
+  const flagged = data?.flaggedItems ?? [];
+  const drTotal = (dr.authentic || 0) + (dr.suspicious || 0) + (dr.synthetic || 0) || 1;
+
+  const cbTotal = (cb.high || 0) + (cb.medium || 0) + (cb.low || 0);
+  const confidenceBands = [
+    { label: 'High (>80%)', count: cb.high || 0, pct: cbTotal > 0 ? Math.round(((cb.high || 0) / cbTotal) * 100) : 0, color: '#00C170' },
+    { label: 'Medium (50–80%)', count: cb.medium || 0, pct: cbTotal > 0 ? Math.round(((cb.medium || 0) / cbTotal) * 100) : 0, color: '#fbbf24' },
+    { label: 'Low (<50%)', count: cb.low || 0, pct: cbTotal > 0 ? Math.round(((cb.low || 0) / cbTotal) * 100) : 0, color: '#ef4444' },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {metrics.map((m) => (
-          <MetricCard key={m.label} {...m} />
-        ))}
+        <MetricCard label="Total Scans" value={m?.totalScans ?? 0} color="#00C170" />
+        <MetricCard label="Threats Detected" value={m?.threatsDetected ?? 0} color="#ef4444" />
+        <MetricCard label="Files Cleared" value={m?.filesCleared ?? 0} color="#00C170" />
+        <MetricCard label="Active Monitoring" value={m?.activeMonitoring ?? 0} color="#fbbf24" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
           <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-4">Detection Ratio</p>
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            <DonutChart />
+            <DonutChart authentic={dr.authentic} suspicious={dr.suspicious} synthetic={dr.synthetic} />
             <div className="space-y-3 w-full sm:w-auto">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#00C170] shrink-0" />
                 <span className="text-sm text-[#ffffff]">Authentic</span>
-                <span className="text-sm text-[#a0a0a0] ml-auto font-mono">{detectionRatio.real} ({realPct}%)</span>
+                <span className="text-sm text-[#a0a0a0] ml-auto font-mono">{(dr.authentic || 0)} ({drTotal > 0 ? Math.round(((dr.authentic || 0) / drTotal) * 100) : 0}%)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#fbbf24] shrink-0" />
+                <span className="text-sm text-[#ffffff]">Suspicious</span>
+                <span className="text-sm text-[#a0a0a0] ml-auto font-mono">{(dr.suspicious || 0)} ({drTotal > 0 ? Math.round(((dr.suspicious || 0) / drTotal) * 100) : 0}%)</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] shrink-0" />
                 <span className="text-sm text-[#ffffff]">Synthetic</span>
-                <span className="text-sm text-[#a0a0a0] ml-auto font-mono">{detectionRatio.synthetic} ({synthPct}%)</span>
+                <span className="text-sm text-[#a0a0a0] ml-auto font-mono">{(dr.synthetic || 0)} ({drTotal > 0 ? Math.round(((dr.synthetic || 0) / drTotal) * 100) : 0}%)</span>
               </div>
             </div>
           </div>
@@ -129,7 +248,7 @@ export default function OverviewContent() {
         </div>
       </div>
 
-      {flaggedItems.length > 0 && (
+      {flagged.length > 0 && (
         <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px]">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
             <div className="flex items-center gap-2">
@@ -145,15 +264,19 @@ export default function OverviewContent() {
           </div>
 
           <div className="divide-y divide-[#3d3a39]">
-            {flaggedItems.map((item) => (
+            {flagged.map((item) => (
               <div key={item.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-[#262626]/50 transition-colors">
                 <div className="min-w-0 flex-1 mr-3">
-                  <p className="text-sm text-[#ffffff] truncate">{item.file}</p>
-                  <p className="text-xs text-[#a0a0a0] mt-0.5">{item.date}</p>
+                  <p className="text-sm text-[#ffffff] truncate">{item.file_name}</p>
+                  <p className="text-xs text-[#a0a0a0] mt-0.5">
+                    {new Date(item.analysed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-[#ef4444]/20 text-[#ef4444]">
-                    Synthetic
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
+                    item.verdict === 'Synthetic' ? 'bg-[#ef4444]/20 text-[#ef4444]' : 'bg-[#fbbf24]/20 text-[#fbbf24]'
+                  }`}>
+                    {item.verdict}
                   </span>
                   <span className="text-xs font-mono text-[#a0a0a0]">{item.confidence}%</span>
                 </div>

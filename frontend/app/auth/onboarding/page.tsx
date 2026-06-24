@@ -31,17 +31,16 @@ export default function OnboardingPage() {
     industryVector.trim().length > 0 &&
     (profileType === 'Company' ? corporateDomain.trim().length > 0 : true);
 
-  const handleFinish = (action: StartAction) => {
+  const handleFinish = async (action: StartAction) => {
     setStartAction(action);
     
-    const newWs = createWorkspace({
+    const newWs = await createWorkspace({
       name: workspaceName.trim(),
       plan: profileType === 'Company' ? 'enterprise' : 'pro',
       industry: industryVector.trim(),
       domain: corporateDomain.trim() || undefined,
     });
 
-    // We can still pass the query param mode=locked if it's explore
     const queryString = action === 'explore' ? '?mode=locked' : '?mode=credit';
     router.push(`/workspace/${newWs.id}${queryString}`);
   };

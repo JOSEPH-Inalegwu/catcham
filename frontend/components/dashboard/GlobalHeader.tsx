@@ -68,12 +68,12 @@ export default function GlobalHeader({ onMenuToggle }: { onMenuToggle?: () => vo
     setIsCreateModalOpen(true);
   };
 
-  const submitNewWorkspace = (e: React.FormEvent) => {
+  const submitNewWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWorkspaceName.trim() || !newWorkspaceIndustry.trim()) return;
     if (newWorkspacePlan === 'enterprise' && !newWorkspaceDomain.trim()) return;
 
-    const newWs = createWorkspace({
+    const newWs = await createWorkspace({
       name: newWorkspaceName.trim(),
       plan: newWorkspacePlan,
       industry: newWorkspaceIndustry.trim(),

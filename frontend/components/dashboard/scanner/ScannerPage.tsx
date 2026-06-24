@@ -41,6 +41,7 @@ export default function ScannerPage() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("plan", currentWorkspace?.plan || "free");
+      formData.append("workspace_id", params.workspaceId as string);
 
       const res = await fetch("/api/workspace/scan", {
         method: "POST",

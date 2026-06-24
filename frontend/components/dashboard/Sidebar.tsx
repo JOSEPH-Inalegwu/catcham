@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
-import { useState } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
+
+const TOUR_TARGETS = ['overview', 'scanner', 'monitoring', 'billing'];
 
 export type NavItem = 'overview' | 'scanner' | 'monitoring' | 'usage' | 'billing' | 'settings';
 
@@ -109,11 +110,13 @@ export default function Sidebar({
               {mainItems.map((item) => {
                 const isActive = activeParam === item.id;
                 const href = `/workspace/${workspaceId}${item.id === 'overview' ? '' : `/${item.id}`}`;
+                const tourIdx = TOUR_TARGETS.indexOf(item.id);
                 return (
                   <Link
                     key={item.id}
                     href={href}
                     onClick={onCloseMobile}
+                    data-tour-index={tourIdx >= 0 ? tourIdx : undefined}
                     className={`relative flex items-center gap-3 px-3 py-2.5 rounded-[6px] text-sm transition-colors ${
                       collapsed ? 'justify-center px-0' : ''
                     } ${
@@ -145,11 +148,13 @@ export default function Sidebar({
               {workspaceItems.map((item) => {
                 const isActive = activeParam === item.id;
                 const href = `/workspace/${workspaceId}/${item.id}`;
+                const tourIdx = TOUR_TARGETS.indexOf(item.id);
                 return (
                   <Link
                     key={item.id}
                     href={href}
                     onClick={onCloseMobile}
+                    data-tour-index={tourIdx >= 0 ? tourIdx : undefined}
                     className={`relative flex items-center gap-3 px-3 py-2.5 rounded-[6px] text-sm transition-colors ${
                       collapsed ? 'justify-center px-0' : ''
                     } ${

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Modal from '@/components/Modal';
+import { Skeleton } from '@/components/Skeleton';
 
 type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
 
@@ -101,8 +102,27 @@ function MetricCard({ label, value, change, color }: { label: string; value: str
 export default function MonitoringContent() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
+  const [loading, setLoading] = useState(true);
   const [addTargetOpen, setAddTargetOpen] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-[68px] w-full rounded-[8px]" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-[104px] rounded-[8px]" />)}
+        </div>
+        <Skeleton className="h-[280px] w-full rounded-[8px]" />
+        <Skeleton className="h-[320px] w-full rounded-[8px]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

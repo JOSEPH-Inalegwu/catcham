@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ModeProvider } from "@/lib/mode-context";
 import { WorkspaceProvider } from "./context/WorkspaceContext";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastProvider } from "./context/ToastContext";
+import ToastContainer from "@/components/ToastContainer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,11 +43,14 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-[#101010] font-sans text-[#f2f2f2]" suppressHydrationWarning>
         <AuthProvider>
-          <WorkspaceProvider>
-            <ModeProvider>
-              {children}
-            </ModeProvider>
-          </WorkspaceProvider>
+          <ToastProvider>
+            <WorkspaceProvider>
+              <ModeProvider>
+                {children}
+                <ToastContainer />
+              </ModeProvider>
+            </WorkspaceProvider>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

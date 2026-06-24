@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
+import { Skeleton } from '@/components/Skeleton';
 
 type BillingTab = 'credits' | 'recharge' | 'payment' | 'history';
 
@@ -319,7 +320,30 @@ function HistoryTab() {
 }
 
 export default function BillingContent() {
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<BillingTab>('credits');
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-[44px] w-[400px] rounded-[8px]" />
+        <div className="flex flex-col-reverse lg:flex-row gap-6">
+          <div className="flex-1 min-w-0 space-y-4">
+            <Skeleton className="h-[120px] w-full rounded-[8px]" />
+            <Skeleton className="h-[120px] w-full rounded-[8px]" />
+          </div>
+          <div className="w-full lg:w-[280px] flex-shrink-0">
+            <Skeleton className="h-[180px] w-full rounded-[8px]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

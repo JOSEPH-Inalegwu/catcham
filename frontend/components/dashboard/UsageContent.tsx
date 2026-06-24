@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Skeleton } from '@/components/Skeleton';
 
 type RangePreset = 'today' | '7d' | '30d' | 'custom';
 
@@ -53,6 +54,7 @@ function getDaysForPreset(preset: RangePreset): number {
 }
 
 export default function UsageContent() {
+  const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState<RangePreset>('7d');
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -62,6 +64,11 @@ export default function UsageContent() {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(t);
+  }, []);
 
   const rows = generateMockData(getDaysForPreset(preset));
   const totalCreditsUsed = rows.reduce((s, r) => s + r.credits, 0);
@@ -95,6 +102,18 @@ export default function UsageContent() {
     a.click();
     URL.revokeObjectURL(url);
   }, [rows, startDate, endDate]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-[40px] w-[420px] rounded-[8px]" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[110px] rounded-[8px]" />)}
+        </div>
+        <Skeleton className="h-[360px] w-full rounded-[8px]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

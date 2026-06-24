@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createRouteClient } from "@/lib/supabase/route-handler";
 import { HIVE_GENERATIVE_MODELS } from "@/lib/hive-models";
 import * as tf from "@tensorflow/tfjs-core";
 import "@tensorflow/tfjs-backend-cpu";
@@ -357,6 +358,63 @@ export async function POST(request: NextRequest) {
     });
     console.log(`  globalVerdict: ${finalGlobalVerdict} | aiScore=${(aiScore*100).toFixed(1)}% deepfakeScore=${(deepfakeScore*100).toFixed(1)}% confidence=${confidence}%`);
 
+    const scanId = crypto.randomUUID();
+    const analysedAt = new Date().toISOString();
+
+    const { supabase } = createRouteClient(request);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    let fileUrl: string | null = null;
+    const workspaceId = formData.get("workspace_id") as string;
+
+    if (workspaceId && user) {
+      const storagePath = `${workspaceId}/${scanId}/${file.name}`;
+      const { data: uploadData } = await supabase.storage
+        .from("scan-uploads")
+        .upload(storagePath, buffer, {
+          contentType: file.type,
+          upsert: false,
+        });
+      if (uploadData) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("scan-uploads")
+          .getPublicUrl(storagePath);
+        fileUrl = publicUrl;
+      }
+
+      const verdictLabel = finalGlobalVerdict === "real" ? "Authentic"
+        : finalGlobalVerdict === "synthetic" ? "Synthetic"
+        : "Suspicious";
+
+      await supabase.from("scans").insert({
+        id: scanId,
+        workspace_id: workspaceId,
+        user_id: user.id,
+        file_name: file.name,
+        file_type: mediaType,
+        file_url: fileUrl,
+        verdict: verdictLabel,
+        confidence,
+        anomaly_type,
+        classification_tag: classificationTag,
+        source: "upload",
+        analysed_at: analysedAt,
+      });
+
+      if (faces.length > 0) {
+        await supabase.from("scan_faces").insert(
+          faces.map((face) => ({
+            scan_id: scanId,
+            score: Math.round(face.score * 100),
+            box_xmin: face.box.xmin,
+            box_ymin: face.box.ymin,
+            box_width: face.box.xmax - face.box.xmin,
+            box_height: face.box.ymax - face.box.ymin,
+          }))
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       verdict: finalGlobalVerdict,
@@ -367,8 +425,8 @@ export async function POST(request: NextRequest) {
       },
       faces,
       face_crops: faceCrops,
-      id: `RPT-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-      analysed_at: new Date().toISOString(),
+      id: scanId,
+      analysed_at: analysedAt,
       media_type: mediaType,
       anomaly_type,
       classification_tag: classificationTag,

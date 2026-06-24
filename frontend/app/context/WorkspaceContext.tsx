@@ -1,11 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { useToast } from './ToastContext';
 
 export type PlanType = 'sandbox' | 'pro' | 'enterprise';
 
 export interface Workspace {
-  id: string; // The URL-safe slug
+  id: string;
   name: string;
   plan: PlanType;
   industry: string;
@@ -16,80 +17,110 @@ export interface Workspace {
 export interface WorkspaceContextType {
   workspaces: Workspace[];
   isHydrated: boolean;
-  createWorkspace: (data: Omit<Workspace, 'id' | 'createdAt'>) => Workspace;
-  updateWorkspace: (id: string, data: Partial<Pick<Workspace, 'name' | 'industry' | 'domain'>>) => void;
-  deleteWorkspace: (id: string) => void;
+  createWorkspace: (data: Omit<Workspace, 'id' | 'createdAt'>) => Promise<Workspace>;
+  updateWorkspace: (id: string, data: Partial<Pick<Workspace, 'name' | 'industry' | 'domain'>>) => Promise<void>;
+  deleteWorkspace: (id: string) => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
-// Sluggification Utility
-function generateSlug(name: string, existingWorkspaces: Workspace[]): string {
-  const baseSlug = name
-    .toLowerCase()
-    .trim()
-    .replace(/[\s\W-]+/g, '-') // replace spaces and non-word chars with hyphens
-    .replace(/^-+|-+$/g, ''); // trim hyphens from start/end
-
-  let uniqueSlug = baseSlug || 'workspace';
-  let counter = 1;
-  
-  // Ensure collision-free slug
-  while (existingWorkspaces.some(w => w.id === uniqueSlug)) {
-    uniqueSlug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-
-  return uniqueSlug;
-}
+const STORAGE_KEY = 'catcham-workspaces';
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
-    // Hydrate state from localStorage
-    const stored = localStorage.getItem('catcham-workspaces');
-    let loadedWorkspaces: Workspace[] = [];
-    
+    const stored = localStorage.getItem(STORAGE_KEY);
+    let localWorkspaces: Workspace[] = [];
     if (stored) {
-      try {
-        loadedWorkspaces = JSON.parse(stored);
-      } catch (e) {
-        console.error("Failed to parse workspaces from localStorage", e);
-      }
+      try { localWorkspaces = JSON.parse(stored); } catch {}
     }
-    
-    setWorkspaces(loadedWorkspaces);
-    setIsHydrated(true);
+    setWorkspaces(localWorkspaces);
+
+    fetch('/api/workspaces')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.workspaces && json.workspaces.length > 0) {
+          const mapped = json.workspaces.map((w: any) => ({
+            id: w.id,
+            name: w.name,
+            plan: w.plan,
+            industry: w.industry ?? '',
+            domain: w.domain ?? undefined,
+            createdAt: new Date(w.created_at).getTime(),
+          }));
+          setWorkspaces(mapped);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsHydrated(true));
   }, []);
 
-  const createWorkspace = (data: Omit<Workspace, 'id' | 'createdAt'>) => {
-    const slug = generateSlug(data.name, workspaces);
+  const createWorkspace = useCallback(async (data: Omit<Workspace, 'id' | 'createdAt'>) => {
+    const res = await fetch('/api/workspaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      addToast(json.details || json.error || 'Failed to create workspace', 'error');
+      throw new Error(json.error ?? 'Failed to create workspace');
+    }
+
+    const w = json.workspace;
     const newWorkspace: Workspace = {
-      ...data,
-      id: slug,
-      createdAt: Date.now(),
+      id: w.id,
+      name: w.name,
+      plan: w.plan,
+      industry: w.industry ?? '',
+      domain: w.domain ?? undefined,
+      createdAt: new Date(w.created_at).getTime(),
     };
 
-    const newWorkspaces = [...workspaces, newWorkspace];
-    setWorkspaces(newWorkspaces);
-    localStorage.setItem('catcham-workspaces', JSON.stringify(newWorkspaces));
-    
-    return newWorkspace;
-  };
-
-  const updateWorkspace = (id: string, data: Partial<Pick<Workspace, 'name' | 'industry' | 'domain'>>) => {
-    const updated = workspaces.map(w => w.id === id ? { ...w, ...data } : w);
+    const updated = [...workspaces, newWorkspace];
     setWorkspaces(updated);
-    localStorage.setItem('catcham-workspaces', JSON.stringify(updated));
-  };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    return newWorkspace;
+  }, [workspaces]);
 
-  const deleteWorkspace = (id: string) => {
-    const remaining = workspaces.filter(w => w.id !== id);
+  const updateWorkspace = useCallback(async (id: string, data: Partial<Pick<Workspace, 'name' | 'industry' | 'domain'>>) => {
+    const res = await fetch(`/api/workspaces/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const json = await res.json();
+      addToast(json.details || json.error || 'Failed to update workspace', 'error');
+      return;
+    }
+
+    const updated = workspaces.map((w) => (w.id === id ? { ...w, ...data } : w));
+    setWorkspaces(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    addToast('Workspace updated', 'success');
+  }, [workspaces, addToast]);
+
+  const deleteWorkspace = useCallback(async (id: string) => {
+    const res = await fetch(`/api/workspaces/${id}`, { method: 'DELETE' });
+
+    if (!res.ok) {
+      const json = await res.json();
+      addToast(json.details || json.error || 'Failed to delete workspace', 'error');
+      return;
+    }
+
+    const remaining = workspaces.filter((w) => w.id !== id);
     setWorkspaces(remaining);
-    localStorage.setItem('catcham-workspaces', JSON.stringify(remaining));
-  };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+    addToast('Workspace deleted', 'success');
+  }, [workspaces, addToast]);
 
   return (
     <WorkspaceContext.Provider value={{ workspaces, isHydrated, createWorkspace, updateWorkspace, deleteWorkspace }}>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkspace } from '@/app/context/WorkspaceContext';
 import Modal from '@/components/Modal';
+import { Skeleton } from '@/components/Skeleton';
 
 type NotificationPrefs = {
   realTime: boolean;
@@ -89,6 +90,31 @@ export default function SettingsContent() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(defaultNotifPrefs);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#3d3a39]">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-56 mt-1.5" />
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!workspace) return;
@@ -109,15 +135,15 @@ export default function SettingsContent() {
     );
   }
 
-  const handleSave = () => {
-    updateWorkspace(workspace.id, { name, industry, domain: domain || undefined });
+  const handleSave = async () => {
+    await updateWorkspace(workspace.id, { name, industry, domain: domain || undefined });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteConfirmText !== workspace.name) return;
-    deleteWorkspace(workspace.id);
+    await deleteWorkspace(workspace.id);
     setShowDeleteConfirm(false);
     setDeleteConfirmText('');
     const remaining = workspaces.filter(w => w.id !== workspace.id);
