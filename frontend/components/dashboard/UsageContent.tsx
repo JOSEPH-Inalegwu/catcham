@@ -1,16 +1,28 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import { Skeleton } from '@/components/Skeleton';
 
 type RangePreset = 'today' | '7d' | '30d' | 'custom';
 
 interface UsageRow {
+  id: string;
   date: string;
   type: string;
   details: string;
   credits: number;
   status: 'completed' | 'failed' | 'pending';
+  verdict?: string | null;
+  confidence?: number | null;
+}
+
+interface UsageData {
+  scans: UsageRow[];
+  credits: { used: number; purchased: number; balance: number };
+  scansToday: number;
+  plan: string;
+  teamSize: number;
 }
 
 const rangePresets: { id: RangePreset; label: string }[] = [
@@ -19,30 +31,6 @@ const rangePresets: { id: RangePreset; label: string }[] = [
   { id: '30d', label: 'Last 30 days' },
   { id: 'custom', label: 'Custom' },
 ];
-
-function generateMockData(days: number): UsageRow[] {
-  const rows: UsageRow[] = [];
-  const types = ['Video Scan', 'Audio Scan', 'Image Scan', 'Web Crawl'];
-  const statuses: Array<'completed' | 'failed' | 'pending'> = ['completed', 'completed', 'completed', 'failed', 'pending'];
-  const now = new Date();
-
-  for (let i = 0; i < days; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const count = Math.floor(Math.random() * 4) + 1;
-    for (let j = 0; j < count; j++) {
-      const type = types[Math.floor(Math.random() * types.length)];
-      rows.push({
-        date: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        type,
-        details: type === 'Web Crawl' ? 'newsportal.com.ng' : 'Uploaded file',
-        credits: type === 'Web Crawl' ? 0 : 1,
-        status: statuses[Math.floor(Math.random() * statuses.length)],
-      });
-    }
-  }
-  return rows;
-}
 
 function getDaysForPreset(preset: RangePreset): number {
   switch (preset) {
@@ -53,8 +41,23 @@ function getDaysForPreset(preset: RangePreset): number {
   }
 }
 
+const planLabels: Record<string, string> = {
+  sandbox: 'Sandbox',
+  pro: 'Pro',
+  enterprise: 'Enterprise',
+};
+
+const tierLimits: Record<string, { credits: string | number; scansPerDay: string | number; monitoring: boolean; team: boolean }> = {
+  Sandbox: { credits: 0, scansPerDay: 3, monitoring: false, team: false },
+  Pro: { credits: 100, scansPerDay: 'Unlimited', monitoring: true, team: false },
+  Enterprise: { credits: 'Unlimited', scansPerDay: 'Unlimited', monitoring: true, team: true },
+};
+
 export default function UsageContent() {
+  const params = useParams();
+  const workspaceId = params.workspaceId as string;
   const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<UsageData | null>(null);
   const [preset, setPreset] = useState<RangePreset>('7d');
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -65,31 +68,38 @@ export default function UsageContent() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(t);
-  }, []);
+  const fetchUsage = useCallback(async (start: string, end: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/usage?start=${start}&end=${end}`);
+      const json = await res.json();
+      setData(json);
+    } catch {
+      // Silently handle
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId]);
 
-  const rows = generateMockData(getDaysForPreset(preset));
-  const totalCreditsUsed = rows.reduce((s, r) => s + r.credits, 0);
-  const completed = rows.filter((r) => r.status === 'completed').length;
-  const failed = rows.filter((r) => r.status === 'failed').length;
+  useEffect(() => {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    fetchUsage(start.toISOString(), end.toISOString());
+  }, [fetchUsage, startDate, endDate]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [preset]);
+
+  const rows = data?.scans ?? [];
+  const totalCreditsUsed = data?.credits.used ?? 0;
+  const planLabel = planLabels[data?.plan ?? 'sandbox'] ?? 'Sandbox';
+  const limits = tierLimits[planLabel] ?? tierLimits.Sandbox;
+
   const totalPages = Math.ceil(rows.length / pageSize);
   const paged = rows.slice((page - 1) * pageSize, page * pageSize);
-
-  // Mock account data
-  const currentTier = 'Sandbox';
-  const tierLimits = {
-    Sandbox: { credits: 0, scansPerDay: 3, monitoring: false, team: false },
-    Pro: { credits: 100, scansPerDay: 'Unlimited', monitoring: true, team: false },
-    Enterprise: { credits: 'Unlimited', scansPerDay: 'Unlimited', monitoring: true, team: true }
-  };
-  
-  const teamMembers = [
-    { id: 1, name: 'Tehillah Husseini', role: 'Team Lead', status: 'Active' },
-    { id: 2, name: 'Joseph Jonah', role: 'Software Developer', status: 'Active' },
-    { id: 3, name: 'Helen Ene', role: 'Business Strategist', status: 'Active' }
-  ];
 
   const downloadCsv = useCallback(() => {
     const header = 'Date,Type,Details,Credits,Status';
@@ -182,11 +192,9 @@ export default function UsageContent() {
           <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-2">Scans Today</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-semibold text-[#ffffff] tracking-tight">
-              {rows.filter(r => 
-                r.date === new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-              ).length}
+              {data?.scansToday ?? 0}
             </span>
-            <span className="text-sm text-[#5a5a5a]">/ {tierLimits[currentTier as keyof typeof tierLimits].scansPerDay}</span>
+            <span className="text-sm text-[#5a5a5a]">/ {limits.scansPerDay}</span>
           </div>
         </div>
 
@@ -196,17 +204,17 @@ export default function UsageContent() {
             <span className="text-3xl font-semibold text-[#ffffff] tracking-tight">
               {totalCreditsUsed}
             </span>
-            <span className="text-sm text-[#5a5a5a]">/ {tierLimits[currentTier as keyof typeof tierLimits].credits === 'Unlimited' ? '∞' : tierLimits[currentTier as keyof typeof tierLimits].credits}</span>
+            <span className="text-sm text-[#5a5a5a]">/ {limits.credits === 'Unlimited' ? '∞' : limits.credits}</span>
           </div>
           <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[#3d3a39]">
-            <div className="h-full rounded-full bg-[#00C170] transition-all" style={{ width: `${Math.min((totalCreditsUsed / (typeof tierLimits[currentTier as keyof typeof tierLimits].credits === 'number' ? (tierLimits[currentTier as keyof typeof tierLimits].credits as number) : 100)) * 100, 100)}%` }} />
+            <div className="h-full rounded-full bg-[#00C170] transition-all" style={{ width: `${Math.min((totalCreditsUsed / (typeof limits.credits === 'number' ? limits.credits : 100)) * 100, 100)}%` }} />
           </div>
         </div>
 
         <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
           <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-2">Current Tier</p>
           <div className="flex items-center gap-3">
-            <span className="text-xl font-semibold text-[#ffffff] tracking-tight">{currentTier}</span>
+            <span className="text-xl font-semibold text-[#ffffff] tracking-tight">{planLabel}</span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-[#00C170]/20 text-[#00C170]">
               Active
             </span>
@@ -231,9 +239,11 @@ export default function UsageContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#3d3a39]">
-                  {paged.map((r, i) => (
-                    <tr key={i} className="hover:bg-[#262626]/50 transition-colors">
-                      <td className="px-5 py-4 text-[#ffffff] whitespace-nowrap">{r.date}</td>
+                  {paged.map((r) => (
+                    <tr key={r.id} className="hover:bg-[#262626]/50 transition-colors">
+                      <td className="px-5 py-4 text-[#ffffff] whitespace-nowrap">
+                        {new Date(r.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
                       <td className="px-5 py-4 text-[#a0a0a0] whitespace-nowrap">{r.type}</td>
                       <td className="px-5 py-4 text-[#a0a0a0] whitespace-nowrap max-w-[200px] truncate">{r.details}</td>
                       <td className="px-5 py-4 text-[#ffffff] whitespace-nowrap font-medium">{r.credits}</td>
@@ -253,12 +263,14 @@ export default function UsageContent() {
             </div>
 
             <div className="md:hidden space-y-3">
-              {paged.map((r, i) => (
-                <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 flex flex-col gap-3">
+              {paged.map((r) => (
+                <div key={r.id} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 flex flex-col gap-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-sm font-semibold text-[#ffffff]">{r.type}</p>
-                      <p className="text-xs text-[#a0a0a0] mt-1">{r.date}</p>
+                      <p className="text-xs text-[#a0a0a0] mt-1">
+                        {new Date(r.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-base font-semibold text-[#ffffff]">{r.credits} <span className="text-xs font-normal text-[#a0a0a0]">cr</span></p>
