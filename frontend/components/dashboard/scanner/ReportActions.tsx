@@ -1,16 +1,18 @@
 "use client";
 
 import { useRef } from 'react';
-import { ScanResult } from './types';
+import SampleButtons from './SampleButtons';
 
 export default function ReportActions({
   onFileSelect,
   onGeneratePdf,
+  onSelectSample,
   isSandbox,
   isGeneratingPdf,
 }: {
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onGeneratePdf: () => void;
+  onSelectSample: (sampleId: string) => Promise<void>;
   isSandbox: boolean;
   isGeneratingPdf: boolean;
 }) {
@@ -55,6 +57,10 @@ export default function ReportActions({
         accept="image/*,video/*"
         onChange={onFileSelect}
       />
+
+      <div className="mt-2 pt-3 border-t border-[#3d3a39]">
+        <SampleButtons onSelectSample={onSelectSample} />
+      </div>
     </div>
   );
 }

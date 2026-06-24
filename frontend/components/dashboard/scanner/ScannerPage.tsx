@@ -6,6 +6,7 @@ import { useWorkspace } from '@/app/context/WorkspaceContext';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { ScanResult } from './types';
+import { samples, getSampleUrl } from './samples';
 import UploadZone from './UploadZone';
 import ScanCanvas from './ScanCanvas';
 import VerdictCard from './VerdictCard';
@@ -18,6 +19,7 @@ type ImgBounds = { top: number; left: number; width: number; height: number };
 // Three states: upload zone (pre-scan), scanning with animation, or results with verdict + metrics.
 export default function ScannerPage() {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -34,6 +36,7 @@ export default function ScannerPage() {
     if (!file) return;
 
     setMediaUrl(URL.createObjectURL(file));
+    setMediaType(file.type);
     setIsScanning(true);
     setScanResult(null);
 
@@ -54,6 +57,48 @@ export default function ScannerPage() {
       }
 
       const data = await res.json();
+      setScanResult(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleSelectSample = async (sampleId: string) => {
+    const sample = samples.find((s) => s.id === sampleId);
+    if (!sample) return;
+
+    setIsScanning(true);
+    setScanResult(null);
+    setMediaUrl(null);
+
+    try {
+      const url = getSampleUrl(sample);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch sample');
+      const blob = await res.blob();
+      const file = new File([blob], sample.filePath, { type: sample.mimeType });
+
+      setMediaUrl(URL.createObjectURL(file));
+      setMediaType(sample.mimeType);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('plan', currentWorkspace?.plan || 'free');
+      formData.append('workspace_id', params.workspaceId as string);
+
+      const scanRes = await fetch('/api/workspace/scan', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!scanRes.ok) {
+        setIsScanning(false);
+        return;
+      }
+
+      const data = await scanRes.json();
       setScanResult(data);
     } catch (err) {
       console.error(err);
@@ -125,7 +170,7 @@ export default function ScannerPage() {
   const isPreScan = !hasResults && !isScanning;
 
   if (isPreScan) {
-    return <UploadZone onFileSelect={handleFileUpload} />;
+    return <UploadZone onFileSelect={handleFileUpload} onSelectSample={handleSelectSample} />;
   }
 
   return (
@@ -133,6 +178,7 @@ export default function ScannerPage() {
       <div className="lg:col-span-2">
         <ScanCanvas
           imageUrl={mediaUrl || ''}
+          mediaType={mediaType}
           isScanning={isScanning}
           scanResult={scanResult}
           imgBounds={imgBounds}
@@ -143,6 +189,7 @@ export default function ScannerPage() {
           <ReportActions
             onFileSelect={handleFileUpload}
             onGeneratePdf={handleGenerateReport}
+            onSelectSample={handleSelectSample}
             isSandbox={isSandbox}
             isGeneratingPdf={isGeneratingPdf}
           />

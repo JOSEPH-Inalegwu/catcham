@@ -1,8 +1,15 @@
 "use client";
 
 import { useRef } from 'react';
+import SampleButtons from './SampleButtons';
 
-export default function UploadZone({ onFileSelect }: { onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void }) {
+export default function UploadZone({
+  onFileSelect,
+  onSelectSample,
+}: {
+  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSelectSample: (sampleId: string) => Promise<void>;
+}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -28,21 +35,7 @@ export default function UploadZone({ onFileSelect }: { onFileSelect: (e: React.C
       </div>
 
       <div>
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-6 h-full flex flex-col justify-center">
-          <h3 className="text-base font-semibold text-[#ffffff] mb-4">Test with Samples</h3>
-          <div className="flex flex-col gap-3">
-            <button
-              className="text-left px-4 py-3 rounded-[6px] text-sm font-medium bg-[#101010] text-[#a0a0a0] hover:text-[#ffffff] border border-[#3d3a39] hover:border-[#5a5a5a] transition-colors"
-            >
-              Sample 1: Political Speech (Deepfake)
-            </button>
-            <button
-              className="text-left px-4 py-3 rounded-[6px] text-sm font-medium bg-[#101010] text-[#a0a0a0] hover:text-[#ffffff] border border-[#3d3a39] hover:border-[#5a5a5a] transition-colors"
-            >
-              Sample 2: News Broadcast (Authentic)
-            </button>
-          </div>
-        </div>
+        <SampleButtons onSelectSample={onSelectSample} />
       </div>
     </div>
   );

@@ -1,9 +1,15 @@
 "use client";
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import { ScanResult } from './types';
 
 type ImgBounds = { top: number; left: number; width: number; height: number };
+
+const VIDEO_EXTS = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+
+function isVideoUrl(url: string) {
+  return VIDEO_EXTS.some((ext) => url.toLowerCase().includes(ext));
+}
 
 // Each face gets its own verdict colour based on its crop score.
 // Green = clean, Amber = suspicious, Red = synthetic.
@@ -20,6 +26,7 @@ function getFaceTheme(score: number) {
 
 export default function ScanCanvas({
   imageUrl,
+  mediaType,
   isScanning,
   scanResult,
   imgBounds,
@@ -27,13 +34,18 @@ export default function ScanCanvas({
   canvasRef,
 }: {
   imageUrl: string;
+  mediaType?: string | null;
   isScanning: boolean;
   scanResult: ScanResult | null;
   imgBounds: ImgBounds | null;
   onImgBounds: (b: ImgBounds) => void;
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  const imgRef = useRef<HTMLImageElement>(null);
+  const isVideo = useMemo(() => {
+    if (mediaType) return mediaType.startsWith('video/');
+    return isVideoUrl(imageUrl);
+  }, [mediaType, imageUrl]);
+  const imgRef = useRef<HTMLImageElement | HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const measure = useCallback(() => {
@@ -56,14 +68,28 @@ export default function ScanCanvas({
       className="w-full bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden max-h-[600px] flex items-center justify-center relative p-2"
     >
       <div ref={containerRef} className="relative inline-block max-w-full max-h-[580px]">
-        <img
-          ref={imgRef}
-          src={imageUrl}
-          alt="Scan Target"
-          className={`block max-w-full max-h-[580px] object-contain transition-opacity duration-300 ${isScanning ? 'opacity-50' : 'opacity-100'}`}
-          crossOrigin="anonymous"
-          onLoad={measure}
-        />
+        {imageUrl && !isVideo && (
+          <img
+            ref={imgRef}
+            src={imageUrl}
+            alt="Scan Target"
+            className={`block max-w-full max-h-[580px] object-contain transition-opacity duration-300 ${isScanning ? 'opacity-50' : 'opacity-100'}`}
+            crossOrigin="anonymous"
+            onLoad={measure}
+          />
+        )}
+        {imageUrl && isVideo && (
+          <video
+            ref={imgRef as React.Ref<HTMLVideoElement>}
+            src={imageUrl}
+            className={`block max-w-full max-h-[580px] object-contain transition-opacity duration-300 ${isScanning ? 'opacity-50' : 'opacity-100'}`}
+            autoPlay
+            muted
+            loop
+            playsInline
+            onLoadedMetadata={measure}
+          />
+        )}
 
         {isScanning && (
           <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-[8px]">
