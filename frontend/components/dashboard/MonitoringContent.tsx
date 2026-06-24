@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { Skeleton } from '@/components/Skeleton';
+import { useToast } from '@/app/context/ToastContext';
 
 type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
 
-interface Alert {
+interface AlertItem {
   id: string;
-  source: string;
+  targetId: string;
   file: string;
+  sourceUrl?: string | null;
   date: string;
   severity: AlertSeverity;
   verdict: 'Synthetic' | 'Suspicious' | 'Authentic';
@@ -23,119 +25,188 @@ interface Target {
   url: string;
   label: string;
   status: 'active' | 'paused' | 'error';
-  lastScan: string;
-  alerts: number;
   type: 'news' | 'social' | 'video' | 'other';
+  lastScan: string | null;
+  alerts: number;
 }
 
-const metrics = [
-  { label: 'Sources Monitored', value: '12', change: '+3', color: '#00C170' },
-  { label: 'Alerts This Week', value: '18', change: '+5', color: '#ef4444' },
-  { label: 'Critical Flags', value: '3', change: '+1', color: '#ef4444' },
-  { label: 'Uptime', value: '99.2%', change: '-0.3%', color: '#fbbf24' },
-];
+interface MonitoringData {
+  crawler: { status: string; sourcesToday: number; lastScan: string | null; queue: number; activeTargets: number };
+  metrics: { sourcesMonitored: number; alertsThisWeek: number; criticalFlags: number; uptime: number };
+  targets: Target[];
+  alerts: AlertItem[];
+}
 
-const targets: Target[] = [
-  { id: '1', url: 'https://punchng.com', label: 'Punch Newspapers', status: 'active', lastScan: '2 min ago', alerts: 7, type: 'news' },
-  { id: '2', url: 'https://tribuneonlineng.com', label: 'Nigerian Tribune', status: 'active', lastScan: '5 min ago', alerts: 4, type: 'news' },
-  { id: '3', url: 'https://x.com/NigeriaGov', label: 'NigeriaGov (X/Twitter)', status: 'active', lastScan: '1 min ago', alerts: 3, type: 'social' },
-  { id: '4', url: 'https://youtube.com/@channel', label: 'YouTube News Channel', status: 'paused', lastScan: '3 hours ago', alerts: 0, type: 'video' },
-  { id: '5', url: 'https://instagram.com/official', label: 'Official Instagram', status: 'active', lastScan: '8 min ago', alerts: 4, type: 'social' },
-  { id: '6', url: 'https://vanguardngr.com', label: 'Vanguard News', status: 'error', lastScan: '1 hour ago', alerts: 0, type: 'news' },
-];
-
-const alerts: Alert[] = [
-  { id: '1', source: 'Punch Newspapers', file: 'minister_speech.mp4', date: '22 Jun 2026, 14:32', severity: 'critical', verdict: 'Synthetic', confidence: 97 },
-  { id: '2', source: 'NigeriaGov (X/Twitter)', file: 'president_address.mp4', date: '22 Jun 2026, 11:15', severity: 'high', verdict: 'Synthetic', confidence: 94 },
-  { id: '3', source: 'Official Instagram', file: 'ceo_interview.mp4', date: '21 Jun 2026, 18:42', severity: 'medium', verdict: 'Suspicious', confidence: 76 },
-  { id: '4', source: 'Nigerian Tribune', file: 'press_release.mp4', date: '21 Jun 2026, 09:08', severity: 'high', verdict: 'Synthetic', confidence: 91 },
-  { id: '5', source: 'Official Instagram', file: 'brand_ambassador.mp4', date: '20 Jun 2026, 22:30', severity: 'low', verdict: 'Suspicious', confidence: 62 },
-  { id: '6', source: 'Punch Newspapers', file: 'panel_discussion.mp4', date: '20 Jun 2026, 16:08', severity: 'critical', verdict: 'Synthetic', confidence: 96 },
-];
-
-const severityConfig: Record<AlertSeverity, { label: string; bg: string; text: string }> = {
-  critical: { label: 'Critical', bg: 'bg-[#ef4444]/20', text: 'text-[#ef4444]' },
-  high: { label: 'High', bg: 'bg-[#f97316]/20', text: 'text-[#f97316]' },
-  medium: { label: 'Medium', bg: 'bg-[#fbbf24]/20', text: 'text-[#fbbf24]' },
-  low: { label: 'Low', bg: 'bg-[#a0a0a0]/20', text: 'text-[#a0a0a0]' },
+const severityConfig: Record<AlertSeverity, { label: string; bg: string; text: string; bar: string }> = {
+  critical: { label: 'Critical', bg: 'bg-[#ef4444]/10', text: 'text-[#ef4444]', bar: 'bg-[#ef4444]' },
+  high: { label: 'High', bg: 'bg-[#f97316]/10', text: 'text-[#f97316]', bar: 'bg-[#f97316]' },
+  medium: { label: 'Medium', bg: 'bg-[#fbbf24]/10', text: 'text-[#fbbf24]', bar: 'bg-[#fbbf24]' },
+  low: { label: 'Low', bg: 'bg-[#a0a0a0]/10', text: 'text-[#a0a0a0]', bar: 'bg-[#a0a0a0]' },
 };
 
-function StatusBadge({ status }: { status: Target['status'] }) {
-  const config = {
-    active: { label: 'Active', dot: 'bg-[#00C170]', bg: 'bg-[#00C170]/10', text: 'text-[#00C170]' },
-    paused: { label: 'Paused', dot: 'bg-[#fbbf24]', bg: 'bg-[#fbbf24]/10', text: 'text-[#fbbf24]' },
-    error: { label: 'Error', dot: 'bg-[#ef4444]', bg: 'bg-[#ef4444]/10', text: 'text-[#ef4444]' },
+function StatusDot({ status }: { status: Target['status'] }) {
+  const colors = { active: 'bg-[#00C170]', paused: 'bg-[#fbbf24]', error: 'bg-[#ef4444]' };
+  return (
+    <span className={`relative flex h-2 w-2`}>
+      <span className={`absolute inline-flex h-full w-full rounded-full ${colors[status]} ${status === 'active' ? 'animate-ping opacity-75' : ''}`} />
+      <span className={`relative inline-flex h-2 w-2 rounded-full ${colors[status]}`} />
+    </span>
+  );
+}
+
+function SeverityBar({ severity }: { severity: AlertSeverity }) {
+  return <div className={`w-1 shrink-0 rounded-full ${severityConfig[severity].bar}`} />;
+}
+
+function VerdictBadge({ verdict }: { verdict: string }) {
+  const styles: Record<string, string> = {
+    Synthetic: 'bg-[#ef4444]/15 text-[#ef4444] border-[#ef4444]/30',
+    Suspicious: 'bg-[#fbbf24]/15 text-[#fbbf24] border-[#fbbf24]/30',
+    Authentic: 'bg-[#00C170]/15 text-[#00C170] border-[#00C170]/30',
   };
-  const c = config[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full font-semibold uppercase tracking-wider ${c.bg} ${c.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dot} ${status === 'active' ? 'animate-pulse' : ''}`} />
-      {c.label}
+    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider border ${styles[verdict] ?? styles.Synthetic}`}>
+      {verdict}
     </span>
-  );
-}
-
-function SeverityPill({ severity }: { severity: AlertSeverity }) {
-  const c = severityConfig[severity];
-  return (
-    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${c.bg} ${c.text}`}>
-      {c.label}
-    </span>
-  );
-}
-
-function MetricCard({ label, value, change, color }: { label: string; value: string; change: string; color: string }) {
-  const isPositive = change.startsWith('+');
-  return (
-    <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">{label}</p>
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${isPositive ? 'bg-[#00C170]/10 text-[#00C170]' : 'bg-[#ef4444]/10 text-[#ef4444]'}`}>
-          {change}
-        </span>
-      </div>
-      <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{value}</p>
-    </div>
   );
 }
 
 export default function MonitoringContent() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<MonitoringData | null>(null);
   const [addTargetOpen, setAddTargetOpen] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [selectedAlert, setSelectedAlert] = useState<AlertItem | null>(null);
+  const [newTargetUrl, setNewTargetUrl] = useState('');
+  const [newTargetLabel, setNewTargetLabel] = useState('');
+  const [newTargetType, setNewTargetType] = useState('news');
+  const [addingTarget, setAddingTarget] = useState(false);
+  const [urlError, setUrlError] = useState('');
+  const [labelError, setLabelError] = useState('');
+
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/monitoring`);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId]);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(t);
-  }, []);
+    fetchData();
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchData();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const validateUrl = (url: string): string => {
+    const trimmed = url.trim();
+    if (!trimmed) return 'URL is required';
+    try {
+      const parsed = new URL(trimmed);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return 'URL must start with http:// or https://';
+      if (!parsed.hostname.includes('.')) return 'Enter a valid domain (e.g. news-site.com)';
+    } catch {
+      return 'Enter a valid URL (e.g. https://news-site.com)';
+    }
+    return '';
+  };
+
+  const sanitizeLabel = (label: string): string => {
+    return label.replace(/<[^>]*>/g, '').replace(/[<>"'&]/g, '').trim().slice(0, 100);
+  };
+
+  const handleAddTarget = async () => {
+    const urlValidation = validateUrl(newTargetUrl);
+    setUrlError(urlValidation);
+    if (urlValidation) return;
+
+    const cleanLabel = sanitizeLabel(newTargetLabel);
+    if (newTargetLabel.trim() && !cleanLabel) {
+      setLabelError('Label contains invalid characters');
+      return;
+    }
+    setLabelError('');
+
+    setAddingTarget(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/monitoring`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: newTargetUrl.trim(),
+          label: cleanLabel || undefined,
+          type: newTargetType,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        addToast(json.details || json.error || 'Failed to add target', 'error');
+        return;
+      }
+      addToast('Target added successfully', 'success');
+      setAddTargetOpen(false);
+      setNewTargetUrl('');
+      setNewTargetLabel('');
+      setNewTargetType('news');
+      fetchData();
+    } catch {
+      addToast('Failed to add target', 'error');
+    } finally {
+      setAddingTarget(false);
+    }
+  };
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-[68px] w-full rounded-[8px]" />
+        <Skeleton className="h-[72px] w-full rounded-[8px]" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-[104px] rounded-[8px]" />)}
         </div>
-        <Skeleton className="h-[280px] w-full rounded-[8px]" />
-        <Skeleton className="h-[320px] w-full rounded-[8px]" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-[300px] rounded-[8px]" />
+          <Skeleton className="h-[300px] rounded-[8px]" />
+        </div>
+        <Skeleton className="h-[200px] rounded-[8px]" />
       </div>
     );
   }
 
+  const m = data?.metrics ?? { sourcesMonitored: 0, alertsThisWeek: 0, criticalFlags: 0, uptime: 0 };
+  const targets = data?.targets ?? [];
+  const alerts = data?.alerts ?? [];
+  const crawler = data?.crawler;
+
   return (
     <div className="space-y-6">
-      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      {/* ─── Crawler Status ─── */}
+      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#00C170] animate-pulse" />
-              <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-[#00C170] animate-ping opacity-40" />
+              <div className="w-3 h-3 rounded-full bg-[#00C170] animate-pulse" />
+              <div className="absolute inset-0 w-3 h-3 rounded-full bg-[#00C170] animate-ping opacity-40" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#ffffff]">Crawler Active</p>
-              <p className="text-xs text-[#a0a0a0] mt-0.5">Last scan completed 2 minutes ago &middot; 156 sources scanned today</p>
+              <div className="flex items-center gap-2.5">
+                <p className="text-sm font-semibold text-[#ffffff]">Crawler Active</p>
+                <span className="text-[10px] text-[#5a5a5a] font-mono bg-[#101010] px-2 py-0.5 rounded-full">
+                  {crawler?.sourcesToday ?? 0} sources today
+                </span>
+              </div>
+              <p className="text-xs text-[#a0a0a0] mt-0.5">
+                Monitoring {m.sourcesMonitored} targets &middot; {crawler?.queue ?? 0} queued
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -149,180 +220,248 @@ export default function MonitoringContent() {
         </div>
       </div>
 
+      {/* ─── Metrics ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {metrics.map((m) => (
-          <MetricCard key={m.label} {...m} />
-        ))}
-      </div>
-
-      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
-          <h3 className="text-sm font-semibold text-[#ffffff]">Surveillance Targets</h3>
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
+          <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-2">Sources Monitored</p>
+          <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{m.sourcesMonitored}</p>
         </div>
-        <div className="hidden md:block">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#3d3a39]">
-                {['Source', 'URL', 'Status', 'Last Scan', 'Alerts'].map((h) => (
-                  <th key={h} className="text-left text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] font-medium px-5 py-3.5 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#3d3a39]">
-              {targets.map((t) => (
-                <tr key={t.id} className="hover:bg-[#262626]/50 transition-colors">
-                  <td className="px-5 py-4">
-                    <p className="text-sm text-[#ffffff]">{t.label}</p>
-                    <p className="text-[10px] text-[#5a5a5a] font-mono uppercase mt-0.5">{t.type}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-xs text-[#a0a0a0] font-mono truncate max-w-[200px] block">{t.url}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge status={t.status} />
-                  </td>
-                  <td className="px-5 py-4 text-xs text-[#a0a0a0]">{t.lastScan}</td>
-                  <td className="px-5 py-4">
-                    <span className={`text-xs font-mono ${t.alerts > 0 ? 'text-[#ef4444]' : 'text-[#5a5a5a]'}`}>
-                      {t.alerts} {t.alerts === 1 ? 'alert' : 'alerts'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="md:hidden divide-y divide-[#3d3a39]">
-          {targets.map((t) => (
-            <div key={t.id} className="px-4 py-3.5 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[#ffffff] font-medium">{t.label}</p>
-                <StatusBadge status={t.status} />
-              </div>
-              <p className="text-xs text-[#a0a0a0] font-mono truncate">{t.url}</p>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#a0a0a0]">{t.lastScan}</span>
-                <span className={t.alerts > 0 ? 'text-[#ef4444]' : 'text-[#5a5a5a]'}>{t.alerts} alerts</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
-            <h3 className="text-sm font-semibold text-[#ffffff]">Recent Alerts</h3>
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">Alerts This Week</p>
+            <span className="text-[10px] text-[#ef4444] font-mono">+{m.alertsThisWeek}</span>
           </div>
-          <span className="text-xs text-[#5a5a5a] font-mono">{alerts.length} total</span>
+          <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{m.alertsThisWeek}</p>
+        </div>
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">Critical Flags</p>
+            <span className="text-[10px] text-[#ef4444] font-mono">+{m.criticalFlags}</span>
+          </div>
+          <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{m.criticalFlags}</p>
+        </div>
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">Uptime</p>
+            <span className="text-[10px] text-[#00C170] font-mono">99.2%</span>
+          </div>
+          <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{m.uptime}%</p>
+        </div>
+      </div>
+
+      {/* ─── Two-column: Targets + Alerts ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Surveillance Targets */}
+        <div className="lg:col-span-3 bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
+            <h3 className="text-sm font-semibold text-[#ffffff]">Surveillance Targets</h3>
+            <span className="text-xs text-[#5a5a5a] font-mono">{targets.length} total</span>
+          </div>
+
+          {targets.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-sm text-[#5a5a5a]">No targets yet.</p>
+              <button
+                onClick={() => setAddTargetOpen(true)}
+                className="mt-3 text-xs text-[#00C170] hover:underline"
+              >
+                Add your first target
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#3d3a39]">
+                      {['Source', 'Status', 'Alerts', 'Last Scan'].map((h) => (
+                        <th key={h} className="text-left text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] font-medium px-5 py-3.5 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#3d3a39]">
+                    {targets.map((t) => (
+                      <tr key={t.id} className="hover:bg-[#262626]/50 transition-colors">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <StatusDot status={t.status} />
+                            <div>
+                              <p className="text-sm text-[#ffffff]">{t.label}</p>
+                              <p className="text-[10px] text-[#5a5a5a] font-mono truncate max-w-[260px]">{t.url}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
+                            t.status === 'active' ? 'bg-[#00C170]/10 text-[#00C170]' :
+                            t.status === 'paused' ? 'bg-[#fbbf24]/10 text-[#fbbf24]' :
+                            'bg-[#ef4444]/10 text-[#ef4444]'
+                          }`}>{t.status}</span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`text-xs font-mono ${t.alerts > 0 ? 'text-[#ef4444]' : 'text-[#5a5a5a]'}`}>
+                            {t.alerts}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-xs text-[#a0a0a0]">
+                          {t.lastScan ? new Date(t.lastScan).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden divide-y divide-[#3d3a39]">
+                {targets.map((t) => (
+                  <div key={t.id} className="px-4 py-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <StatusDot status={t.status} />
+                        <p className="text-sm text-[#ffffff] font-medium">{t.label}</p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
+                        t.status === 'active' ? 'bg-[#00C170]/10 text-[#00C170]' :
+                        t.status === 'paused' ? 'bg-[#fbbf24]/10 text-[#fbbf24]' :
+                        'bg-[#ef4444]/10 text-[#ef4444]'
+                      }`}>{t.status}</span>
+                    </div>
+                    <p className="text-xs text-[#a0a0a0] font-mono truncate">{t.url}</p>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#5a5a5a]">{t.lastScan ? new Date(t.lastScan).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—'}</span>
+                      <span className={t.alerts > 0 ? 'text-[#ef4444] font-mono' : 'text-[#5a5a5a]'}>{t.alerts} alerts</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="hidden md:block">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#3d3a39]">
-                {['File', 'Source', 'Date', 'Severity', 'Verdict', 'Confidence'].map((h) => (
-                  <th key={h} className="text-left text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] font-medium px-5 py-3.5 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#3d3a39]">
+        {/* Recent Alerts */}
+        <div className="lg:col-span-2 bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
+              <h3 className="text-sm font-semibold text-[#ffffff]">Recent Alerts</h3>
+            </div>
+            <Link
+              href={`/workspace/${workspaceId}/usage`}
+              className="text-xs text-[#00C170] hover:underline"
+            >
+              View all
+            </Link>
+          </div>
+
+          {alerts.length === 0 ? (
+            <div className="p-8 text-center">
+              <svg className="w-8 h-8 mx-auto text-[#3d3a39] mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-[#5a5a5a]">No alerts this week.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#3d3a39] max-h-[400px] overflow-y-auto">
               {alerts.map((a) => (
-                <tr
+                <button
                   key={a.id}
                   onClick={() => setSelectedAlert(a)}
-                  className="hover:bg-[#262626]/50 transition-colors cursor-pointer"
+                  className="w-full text-left px-4 py-3 hover:bg-[#262626]/50 transition-colors flex items-start gap-3"
                 >
-                  <td className="px-5 py-4 text-sm text-[#ffffff] max-w-[200px] truncate">{a.file}</td>
-                  <td className="px-5 py-4 text-xs text-[#a0a0a0]">{a.source}</td>
-                  <td className="px-5 py-4 text-xs text-[#a0a0a0] whitespace-nowrap">{a.date}</td>
-                  <td className="px-5 py-4"><SeverityPill severity={a.severity} /></td>
-                  <td className="px-5 py-4">
-                    <span className={`text-[10px] px-2 py-1 rounded-full font-semibold uppercase tracking-wider ${
-                      a.verdict === 'Synthetic' ? 'bg-[#ef4444]/20 text-[#ef4444]' :
-                      a.verdict === 'Suspicious' ? 'bg-[#fbbf24]/20 text-[#fbbf24]' :
-                      'bg-[#00C170]/20 text-[#00C170]'
-                    }`}>
-                      {a.verdict}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-xs font-mono text-[#ffffff]">{a.confidence}%</td>
-                </tr>
+                  <SeverityBar severity={a.severity} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-[#ffffff] truncate">{a.file}</p>
+                      <span className="text-xs font-mono text-[#a0a0a0] shrink-0">{a.confidence}%</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <VerdictBadge verdict={a.verdict} />
+                      <span className="text-[10px] text-[#5a5a5a]">
+                        {new Date(a.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                </button>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="md:hidden divide-y divide-[#3d3a39]">
-          {alerts.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => setSelectedAlert(a)}
-              className="w-full text-left px-4 py-3.5 hover:bg-[#262626]/50 transition-colors space-y-2"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[#ffffff] truncate flex-1 mr-2">{a.file}</p>
-                <SeverityPill severity={a.severity} />
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#a0a0a0]">{a.source}</span>
-                <span className="text-[#a0a0a0]">{a.date}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
-                  a.verdict === 'Synthetic' ? 'bg-[#ef4444]/20 text-[#ef4444]' :
-                  a.verdict === 'Suspicious' ? 'bg-[#fbbf24]/20 text-[#fbbf24]' :
-                  'bg-[#00C170]/20 text-[#00C170]'
-                }`}>
-                  {a.verdict}
-                </span>
-                <span className="text-xs font-mono text-[#a0a0a0]">{a.confidence}%</span>
-              </div>
-            </button>
-          ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link
-          href={`/workspace/${workspaceId}/scanner`}
-          className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 hover:border-[#00C170]/50 transition-colors group"
-        >
-          <p className="text-sm font-semibold text-[#ffffff] group-hover:text-[#00C170] transition-colors">Manual Scan</p>
-          <p className="text-xs text-[#a0a0a0] mt-1">Upload a file for immediate forensic analysis.</p>
-        </Link>
-        <Link
-          href={`/workspace/${workspaceId}/usage`}
-          className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 hover:border-[#00C170]/50 transition-colors group"
-        >
-          <p className="text-sm font-semibold text-[#ffffff] group-hover:text-[#00C170] transition-colors">View Report History</p>
-          <p className="text-xs text-[#a0a0a0] mt-1">Review past scan reports and forensic evidence.</p>
-        </Link>
-      </div>
+      {/* ─── Activity Timeline ─── */}
+      {alerts.length > 0 && (
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+          <h3 className="text-sm font-semibold text-[#ffffff] mb-4">Activity Timeline</h3>
+          <div className="space-y-0">
+            {alerts.slice(0, 8).map((a, i) => (
+              <div key={a.id} className="flex gap-4 pb-4 relative">
+                {i < Math.min(alerts.length, 8) - 1 && (
+                  <div className="absolute left-[7px] top-4 bottom-0 w-px bg-[#3d3a39]" />
+                )}
+                <div className={`w-[14px] h-[14px] rounded-full border-2 shrink-0 mt-0.5 ${
+                  a.severity === 'critical' ? 'border-[#ef4444] bg-[#ef4444]/20' :
+                  a.severity === 'high' ? 'border-[#f97316] bg-[#f97316]/20' :
+                  a.severity === 'medium' ? 'border-[#fbbf24] bg-[#fbbf24]/20' :
+                  'border-[#a0a0a0] bg-[#a0a0a0]/20'
+                }`} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-[#ffffff] font-medium">{a.file}</span>
+                    <VerdictBadge verdict={a.verdict} />
+                    <span className="text-[10px] text-[#5a5a5a]">
+                      {new Date(a.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#a0a0a0] mt-0.5">
+                    {a.severity === 'critical' ? 'Urgent review recommended' :
+                     a.severity === 'high' ? 'Review within 24 hours' :
+                     'Monitor for patterns'} &middot; {a.confidence}% confidence
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-      <Modal open={addTargetOpen} onClose={() => setAddTargetOpen(false)} title="Add Surveillance Target">
+      {/* ─── Add Target Modal ─── */}
+      <Modal open={addTargetOpen} onClose={() => { setAddTargetOpen(false); setNewTargetUrl(''); setNewTargetLabel(''); setNewTargetType('news'); setUrlError(''); setLabelError(''); }} title="Add Surveillance Target">
         <div className="space-y-3">
           <div>
             <label className="text-xs text-[#a0a0a0] mb-1.5 block">URL to monitor</label>
             <input
               type="url"
+              value={newTargetUrl}
+              onChange={(e) => { setNewTargetUrl(e.target.value); if (urlError) setUrlError(''); }}
               placeholder="https://news-site.com"
-              className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
+              className={`w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none transition-colors ${
+                urlError ? 'border-[#ef4444]' : 'border-[#3d3a39] focus:border-[#00C170]/50'
+              }`}
             />
+            {urlError && <p className="text-[10px] text-[#ef4444] mt-1">{urlError}</p>}
           </div>
           <div>
             <label className="text-xs text-[#a0a0a0] mb-1.5 block">Label (optional)</label>
             <input
               type="text"
+              value={newTargetLabel}
+              onChange={(e) => { setNewTargetLabel(e.target.value); if (labelError) setLabelError(''); }}
               placeholder="My News Source"
-              className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border border-[#3d3a39] rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none focus:border-[#00C170]/50 transition-colors"
+              className={`w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border rounded-[6px] placeholder:text-[#5a5a5a] focus:outline-none transition-colors ${
+                labelError ? 'border-[#ef4444]' : 'border-[#3d3a39] focus:border-[#00C170]/50'
+              }`}
             />
+            {labelError && <p className="text-[10px] text-[#ef4444] mt-1">{labelError}</p>}
           </div>
           <div>
             <label className="text-xs text-[#a0a0a0] mb-1.5 block">Source type</label>
-            <select className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border border-[#3d3a39] rounded-[6px] focus:outline-none focus:border-[#00C170]/50 transition-colors appearance-none">
+            <select
+              value={newTargetType}
+              onChange={(e) => setNewTargetType(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm text-[#ffffff] bg-[#101010] border border-[#3d3a39] rounded-[6px] focus:outline-none focus:border-[#00C170]/50 transition-colors appearance-none"
+            >
               <option value="news">News</option>
               <option value="social">Social Media</option>
               <option value="video">Video Platform</option>
@@ -332,37 +471,35 @@ export default function MonitoringContent() {
         </div>
         <div className="mt-5 flex items-center gap-3">
           <button
-            onClick={() => setAddTargetOpen(false)}
+            onClick={() => { setAddTargetOpen(false); setNewTargetUrl(''); setNewTargetLabel(''); setNewTargetType('news'); setUrlError(''); setLabelError(''); }}
             className="flex-1 py-2.5 text-sm font-semibold text-[#a0a0a0] border border-[#3d3a39] rounded-[6px] hover:text-[#ffffff] hover:border-[#5a5a5a] transition-colors"
           >
             Cancel
           </button>
           <button
-            onClick={() => setAddTargetOpen(false)}
-            className="flex-1 py-2.5 text-sm font-semibold text-[#0A0A0A] bg-[#00C170] rounded-[6px] hover:opacity-90 transition-opacity"
+            onClick={handleAddTarget}
+            disabled={addingTarget}
+            className="flex-1 py-2.5 text-sm font-semibold text-[#0A0A0A] bg-[#00C170] rounded-[6px] hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Add Target
+            {addingTarget ? 'Adding...' : 'Add Target'}
           </button>
         </div>
       </Modal>
 
+      {/* ─── Alert Detail Modal ─── */}
       <Modal
         open={selectedAlert !== null}
         onClose={() => setSelectedAlert(null)}
         title={selectedAlert?.file ?? ''}
-        description={`Detected on ${selectedAlert?.source}`}
+        description={`Detected from surveillance feed`}
       >
         {selectedAlert && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <SeverityPill severity={selectedAlert.severity} />
-              <span className={`text-[10px] px-2 py-1 rounded-full font-semibold uppercase tracking-wider ${
-                selectedAlert.verdict === 'Synthetic' ? 'bg-[#ef4444]/20 text-[#ef4444]' :
-                selectedAlert.verdict === 'Suspicious' ? 'bg-[#fbbf24]/20 text-[#fbbf24]' :
-                'bg-[#00C170]/20 text-[#00C170]'
-              }`}>
-                {selectedAlert.verdict}
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${severityConfig[selectedAlert.severity].bg} ${severityConfig[selectedAlert.severity].text}`}>
+                {severityConfig[selectedAlert.severity].label}
               </span>
+              <VerdictBadge verdict={selectedAlert.verdict} />
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -371,7 +508,9 @@ export default function MonitoringContent() {
               </div>
               <div>
                 <p className="text-xs text-[#a0a0a0]">Detected</p>
-                <p className="text-[#ffffff]">{selectedAlert.date}</p>
+                <p className="text-[#ffffff]">
+                  {new Date(selectedAlert.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
               </div>
             </div>
             <Link
