@@ -45,8 +45,13 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
 
   if (!isHydrated || isValidating) {
     return (
-      <div className="min-h-screen bg-[#101010] flex items-center justify-center">
-        <span className="text-[#a0a0a0] text-sm">Loading workspace...</span>
+      <div className="min-h-screen bg-[#101010] flex flex-col items-center justify-center gap-6">
+        <img
+          src="/logo (2).png"
+          alt="CatchAm"
+          className="h-12 w-auto animate-logo-pulse"
+        />
+        <span className="text-[#a0a0a0] text-sm animate-pulse">Loading workspace...</span>
       </div>
     );
   }

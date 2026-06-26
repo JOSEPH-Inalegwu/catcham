@@ -44,11 +44,30 @@ body {
   animation: scan-line 2.5s ease-in-out infinite;
 }
 
-@keyframes slide-in-right {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .animate-slide-in-right {
-  animation: slide-in-right 0.3s ease-out;
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes logo-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+.animate-logo-pulse {
+  animation: logo-pulse 2.4s ease-in-out infinite;
 }

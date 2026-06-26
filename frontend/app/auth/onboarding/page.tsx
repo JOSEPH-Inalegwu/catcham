@@ -10,7 +10,7 @@ type StartAction = 'credits' | 'subscribe' | 'explore';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { workspaces, createWorkspace } = useWorkspace();
+  const { workspaces, isHydrated, createWorkspace } = useWorkspace();
 
   useEffect(() => {
     if (workspaces.length > 0) {
@@ -44,6 +44,19 @@ export default function OnboardingPage() {
     const queryString = action === 'explore' ? '?mode=locked' : '?mode=credit';
     router.push(`/workspace/${newWs.id}${queryString}`);
   };
+
+  if (!isHydrated) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#101010] gap-6">
+        <img
+          src="/logo (2).png"
+          alt="CatchAm"
+          className="h-12 w-auto animate-logo-pulse"
+        />
+        <span className="text-[#a0a0a0] text-sm animate-pulse">Loading workspace...</span>
+      </div>
+    );
+  }
 
   if (step === 1) {
     return (
