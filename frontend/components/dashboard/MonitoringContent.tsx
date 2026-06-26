@@ -1,13 +1,73 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/app/context/ToastContext';
 
-type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
+function AnimatedCounter({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  const prevRef = useRef(0);
+
+  useEffect(() => {
+    const target = value;
+    const start = prevRef.current;
+    if (start === target) return;
+    const duration = 500;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(start + (target - start) * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    prevRef.current = target;
+  }, [value]);
+
+  return <>{display}</>;
+}
+
+const MONITOR_ICONS: Record<string, JSX.Element> = {
+  'Sources Monitored': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8m-4-4h8M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+    </svg>
+  ),
+  'Alerts This Week': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+    </svg>
+  ),
+  'Critical Flags': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 4h.01M10.29 3.86l-8 14A1 1 0 003 19h18a1 1 0 00.86-1.49l-8-14a1 1 0 00-1.72 0z" />
+    </svg>
+  ),
+  'Uptime': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  ),
+};
+
+function MonitorMetricCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="bg-[#1A1A1A] border border-[#2a2a2a] rounded-[8px] p-4 md:p-5 hover:border-[#3d3a39] transition-all group cursor-default">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="shrink-0 text-[#5a5a5a]">{MONITOR_ICONS[label]}</span>
+        <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] truncate">{label}</p>
+      </div>
+      <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">
+        {label === 'Uptime' ? <>{value}%</> : <AnimatedCounter value={Number(value)} />}
+      </p>
+    </div>
+  );
+}
 
 interface AlertItem {
   id: string;
@@ -222,31 +282,10 @@ export default function MonitoringContent() {
 
       {/* ─── Metrics ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
-          <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-2">Sources Monitored</p>
-          <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{m.sourcesMonitored}</p>
-        </div>
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">Alerts This Week</p>
-            <span className="text-[10px] text-[#ef4444] font-mono">+{m.alertsThisWeek}</span>
-          </div>
-          <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{m.alertsThisWeek}</p>
-        </div>
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">Critical Flags</p>
-            <span className="text-[10px] text-[#ef4444] font-mono">+{m.criticalFlags}</span>
-          </div>
-          <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{m.criticalFlags}</p>
-        </div>
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">Uptime</p>
-            <span className="text-[10px] text-[#00C170] font-mono">99.2%</span>
-          </div>
-          <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{m.uptime}%</p>
-        </div>
+        <MonitorMetricCard label="Sources Monitored" value={m.sourcesMonitored} />
+        <MonitorMetricCard label="Alerts This Week" value={m.alertsThisWeek} />
+        <MonitorMetricCard label="Critical Flags" value={m.criticalFlags} />
+        <MonitorMetricCard label="Uptime" value={m.uptime} />
       </div>
 
       {/* ─── Two-column: Targets + Alerts ─── */}

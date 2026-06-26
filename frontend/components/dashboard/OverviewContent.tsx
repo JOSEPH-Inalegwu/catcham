@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Skeleton } from '@/components/Skeleton';
@@ -26,6 +26,68 @@ type OverviewData = {
   }[];
 };
 
+function AnimatedCounter({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  const prevRef = useRef(0);
+
+  useEffect(() => {
+    const target = value;
+    const start = prevRef.current;
+    if (start === target) return;
+    const duration = 500;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(start + (target - start) * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    prevRef.current = target;
+  }, [value]);
+
+  return <>{display}</>;
+}
+
+const CARD_ICONS: Record<string, JSX.Element> = {
+  'Total Scans': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l7 3v6c0 4.97-3.16 9.62-7 10.97C8.16 20.62 5 16.97 5 12V5l7-3z" />
+    </svg>
+  ),
+  'Threats Detected': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 4h.01M10.29 3.86l-8 14A1 1 0 003 19h18a1 1 0 00.86-1.49l-8-14a1 1 0 00-1.72 0z" />
+    </svg>
+  ),
+  'Files Cleared': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  'Active Monitoring': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8m-4-4h8M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+    </svg>
+  ),
+};
+
+function MetricCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="bg-[#1A1A1A] border border-[#2a2a2a] rounded-[8px] p-5 hover:border-[#3d3a39] transition-all group cursor-default">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="shrink-0 text-[#5a5a5a]">{CARD_ICONS[label]}</span>
+        <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">{label}</p>
+      </div>
+      <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">
+        <AnimatedCounter value={Number(value)} />
+      </p>
+    </div>
+  );
+}
+
 function DonutChart({ authentic, suspicious, synthetic }: { authentic: number; suspicious: number; synthetic: number }) {
   const a = authentic || 0;
   const s = suspicious || 0;
@@ -47,28 +109,19 @@ function DonutChart({ authentic, suspicious, synthetic }: { authentic: number; s
       <svg className="w-[160px] h-[160px] -rotate-90" viewBox="0 0 140 140">
         <circle cx="70" cy="70" r={r} fill="none" stroke="#1A1A1A" strokeWidth="18" />
         {aPct > 0 && (
-          <circle cx="70" cy="70" r={r} fill="none" stroke="#00C170" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(aPct / 100) * circ - gap} ${circ}`} strokeDashoffset={aOffset} className="transition-all duration-700" />
+          <circle cx="70" cy="70" r={r} fill="none" stroke="#00C170" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(aPct / 100) * circ - gap} ${circ}`} strokeDashoffset={aOffset} className="transition-all duration-700" style={{ filter: 'drop-shadow(0 0 6px rgba(0,193,112,0.35))' }} />
         )}
         {sPct > 0 && (
-          <circle cx="70" cy="70" r={r} fill="none" stroke="#fbbf24" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(sPct / 100) * circ - gap} ${circ}`} strokeDashoffset={sOffset} className="transition-all duration-700" />
+          <circle cx="70" cy="70" r={r} fill="none" stroke="#fbbf24" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(sPct / 100) * circ - gap} ${circ}`} strokeDashoffset={sOffset} className="transition-all duration-700" style={{ filter: 'drop-shadow(0 0 6px rgba(251,191,36,0.35))' }} />
         )}
         {synPct > 0 && (
-          <circle cx="70" cy="70" r={r} fill="none" stroke="#ef4444" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(synPct / 100) * circ - gap} ${circ}`} strokeDashoffset={synOffset} className="transition-all duration-700" />
+          <circle cx="70" cy="70" r={r} fill="none" stroke="#ef4444" strokeWidth="18" strokeLinecap="round" strokeDasharray={`${(synPct / 100) * circ - gap} ${circ}`} strokeDashoffset={synOffset} className="transition-all duration-700" style={{ filter: 'drop-shadow(0 0 6px rgba(239,68,68,0.35))' }} />
         )}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-semibold text-[#ffffff]">{total}</span>
+        <span className="text-2xl font-semibold text-[#ffffff]">{<AnimatedCounter value={total} />}</span>
         <span className="text-[10px] font-mono text-[#a0a0a0]">Total scans</span>
       </div>
-    </div>
-  );
-}
-
-function MetricCard({ label, value, color }: { label: string; value: string | number; color: string }) {
-  return (
-    <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
-      <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-3">{label}</p>
-      <p className="text-3xl font-semibold text-[#ffffff] tracking-tight">{value}</p>
     </div>
   );
 }
@@ -196,10 +249,10 @@ export default function OverviewContent() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <MetricCard label="Total Scans" value={m?.totalScans ?? 0} color="#00C170" />
-        <MetricCard label="Threats Detected" value={m?.threatsDetected ?? 0} color="#ef4444" />
-        <MetricCard label="Files Cleared" value={m?.filesCleared ?? 0} color="#00C170" />
-        <MetricCard label="Active Monitoring" value={m?.activeMonitoring ?? 0} color="#fbbf24" />
+        <MetricCard label="Total Scans" value={m?.totalScans ?? 0} />
+        <MetricCard label="Threats Detected" value={m?.threatsDetected ?? 0} />
+        <MetricCard label="Files Cleared" value={m?.filesCleared ?? 0} />
+        <MetricCard label="Active Monitoring" value={m?.activeMonitoring ?? 0} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
