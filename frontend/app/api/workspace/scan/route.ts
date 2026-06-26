@@ -358,7 +358,7 @@ export async function POST(request: NextRequest) {
     });
     console.log(`  globalVerdict: ${finalGlobalVerdict} | aiScore=${(aiScore*100).toFixed(1)}% deepfakeScore=${(deepfakeScore*100).toFixed(1)}% confidence=${confidence}%`);
 
-    const scanId = crypto.randomUUID();
+    const scanId = crypto.randomUUID().split('-')[0];
     const analysedAt = new Date().toISOString();
 
     const { supabase } = createRouteClient(request);

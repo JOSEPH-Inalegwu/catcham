@@ -5,9 +5,10 @@ import { useAuth } from '@/app/context/AuthContext';
 
 export default function UserAvatar({ onAddWorkspace }: { onAddWorkspace?: () => void }) {
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
-  const name = user?.user_metadata?.full_name ?? user?.email ?? 'User';
+  const name = profile?.displayName ?? user?.user_metadata?.full_name ?? user?.email ?? 'User';
+  const avatarUrl = profile?.avatarUrl ?? user?.user_metadata?.avatar_url ?? null;
   const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
   return (
@@ -16,9 +17,17 @@ export default function UserAvatar({ onAddWorkspace }: { onAddWorkspace?: () => 
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2.5 px-3 py-1.5 rounded-[6px] hover:bg-[#1A1A1A] transition-colors"
       >
-        <div className="w-8 h-8 rounded-full bg-[#00C170]/20 border border-[#3d3a39] flex items-center justify-center text-xs font-semibold text-[#00C170] flex-shrink-0">
-          {initials}
-        </div>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={name}
+            className="w-8 h-8 rounded-full object-cover border border-[#3d3a39] flex-shrink-0"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-[#00C170]/20 border border-[#3d3a39] flex items-center justify-center text-xs font-semibold text-[#00C170] flex-shrink-0">
+            {initials}
+          </div>
+        )}
         <span className="text-sm text-[#ffffff] hidden sm:inline truncate max-w-[120px]">{name}</span>
         <svg className={`w-3.5 h-3.5 text-[#a0a0a0] transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -31,12 +40,20 @@ export default function UserAvatar({ onAddWorkspace }: { onAddWorkspace?: () => 
           <div className="absolute top-full mt-2 right-0 w-[280px] bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-1.5 z-20 shadow-lg">
             
             <div className="flex items-center gap-3 px-3 py-3 mb-1.5">
-              <div className="w-9 h-9 rounded-full bg-[#00C170]/20 border border-[#3d3a39] flex items-center justify-center text-sm font-semibold text-[#00C170]">
-                {initials}
-              </div>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={name}
+                  className="w-9 h-9 rounded-full object-cover border border-[#3d3a39]"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-[#00C170]/20 border border-[#3d3a39] flex items-center justify-center text-sm font-semibold text-[#00C170]">
+                  {initials}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="text-sm font-medium text-[#ffffff] truncate">{name}</p>
-                <p className="text-xs text-[#a0a0a0] truncate">{user?.email ?? ''}</p>
+                <p className="text-xs text-[#a0a0a0] truncate">{profile?.email ?? user?.email ?? ''}</p>
               </div>
             </div>
 

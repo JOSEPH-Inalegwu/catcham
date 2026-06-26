@@ -1,10 +1,23 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkspace } from '@/app/context/WorkspaceContext';
+import { useAuth } from '@/app/context/AuthContext';
+import { useToast } from '@/app/context/ToastContext';
 import Modal from '@/components/Modal';
+import AvatarCropModal from '@/components/AvatarCropModal';
 import { Skeleton } from '@/components/Skeleton';
+
+type Member = {
+  id: string;
+  userId: string;
+  role: string;
+  displayName: string;
+  email: string;
+  avatarUrl: string | null;
+  joinedAt: string;
+};
 
 type NotificationPrefs = {
   realTime: boolean;
@@ -45,13 +58,11 @@ type SectionCardProps = {
 function SectionCard({ title, description, danger, children }: SectionCardProps) {
   return (
     <div className={`bg-[#1A1A1A] border rounded-[8px] ${danger ? 'border-[#ef4444]/30' : 'border-[#3d3a39]'}`}>
-  <div className="px-6 py-4 border-b border-[#3d3a39]">
-    <h3 className={`text-sm font-semibold ${danger ? 'text-[#ef4444]' : 'text-[#ffffff]'}`}>{title}</h3>
-    {description && <p className="text-xs text-[#a0a0a0] mt-0.5">{description}</p>}
-  </div>
-      <div className="px-6 py-5">
-        {children}
+      <div className="px-6 py-4 border-b border-[#3d3a39]">
+        <h3 className={`text-sm font-semibold ${danger ? 'text-[#ef4444]' : 'text-[#ffffff]'}`}>{title}</h3>
+        {description && <p className="text-xs text-[#a0a0a0] mt-0.5">{description}</p>}
       </div>
+      <div className="px-6 py-5">{children}</div>
     </div>
   );
 }
@@ -69,9 +80,41 @@ function FieldRow({ label, description, children }: FieldRowProps) {
         <p className="text-sm text-[#ffffff]">{label}</p>
         {description && <p className="text-xs text-[#5a5a5a] mt-0.5">{description}</p>}
       </div>
-      <div className="flex-1 max-w-[380px]">
-        {children}
+      <div className="flex-1 max-w-[380px]">{children}</div>
+    </div>
+  );
+}
+
+function MemberRow({ member, isOwner }: { member: Member; isOwner: boolean }) {
+  const initials = member.displayName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-[#3d3a39]/50 last:border-0">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-[#00C170]/20 flex items-center justify-center text-sm font-bold text-[#00C170] shrink-0">
+          {initials || '?'}
+        </div>
+        <div>
+          <p className="text-sm text-[#ffffff] font-medium">{member.displayName}</p>
+          <p className="text-xs text-[#5a5a5a]">{member.email || 'No email'}</p>
+        </div>
       </div>
+      <span
+        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+          isOwner
+            ? 'bg-[#00C170]/20 text-[#00C170]'
+            : member.role === 'admin'
+              ? 'bg-[#3b82f6]/20 text-[#3b82f6]'
+              : 'bg-[#3d3a39]/50 text-[#a0a0a0]'
+        }`}
+      >
+        {isOwner ? 'Owner' : member.role === 'admin' ? 'Admin' : 'Member'}
+      </span>
     </div>
   );
 }
@@ -82,6 +125,21 @@ export default function SettingsContent() {
   const { workspaces, updateWorkspace, deleteWorkspace } = useWorkspace();
   const workspace = workspaces.find((w) => w.id === params.workspaceId);
 
+  const { user, profile, refreshProfile, updateProfile } = useAuth();
+  const { addToast } = useToast();
+
+  const [profileName, setProfileName] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [avatarKey, setAvatarKey] = useState(0);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
   const [domain, setDomain] = useState('');
@@ -89,43 +147,69 @@ export default function SettingsContent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
+  const [members, setMembers] = useState<Member[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(defaultNotifPrefs);
-  const [loading, setLoading] = useState(true);
+  const [sessionTimeout, setSessionTimeout] = useState(30);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(t);
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#3d3a39]">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-56 mt-1.5" />
-            </div>
-            <div className="px-6 py-5 space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteDisplayName, setInviteDisplayName] = useState('');
+  const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
+  const [inviteError, setInviteError] = useState('');
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     if (!workspace) return;
     setName(workspace.name);
     setIndustry(workspace.industry);
     setDomain(workspace.domain || '');
-    const stored = localStorage.getItem(`catcham-notif-${workspace.id}`);
-    if (stored) {
-      try { setNotifPrefs(JSON.parse(stored)); } catch { }
-    }
   }, [workspace]);
+
+  useEffect(() => {
+    if (profile) {
+      setProfileName(profile.displayName);
+      setProfileAvatar(profile.avatarUrl ?? user?.user_metadata?.avatar_url ?? null);
+    } else if (user) {
+      setProfileName(user.user_metadata?.full_name ?? user.email ?? '');
+      setProfileAvatar(user.user_metadata?.avatar_url ?? null);
+    }
+  }, []);
+
+  const fetchMembers = useCallback(async () => {
+    if (!params.workspaceId) return;
+    setMembersLoading(true);
+    try {
+      const res = await fetch(`/api/workspace/${params.workspaceId}/members`);
+      const json = await res.json();
+      if (json.members) setMembers(json.members);
+    } catch {
+      // fallback empty
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [params.workspaceId]);
+
+  const fetchPreferences = useCallback(async () => {
+    if (!params.workspaceId) return;
+    try {
+      const res = await fetch(`/api/workspace/${params.workspaceId}/preferences`);
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.notifications) setNotifPrefs(json.notifications);
+      if (json.sessionTimeout) setSessionTimeout(json.sessionTimeout);
+      setPrefsLoaded(true);
+    } catch {
+      // fallback to defaults
+    }
+  }, [params.workspaceId]);
+
+  useEffect(() => {
+    fetchMembers();
+    fetchPreferences();
+  }, [fetchMembers, fetchPreferences]);
 
   if (!workspace) {
     return (
@@ -134,6 +218,81 @@ export default function SettingsContent() {
       </div>
     );
   }
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      setUploadError('Only JPEG, PNG, WebP, and GIF files are allowed.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('File too large. Maximum size is 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
+  };
+
+  const handleCropSave = async (blob: Blob) => {
+    setCropModalOpen(false);
+    setCropImageSrc(null);
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', blob, 'avatar.webp');
+      const res = await fetch('/api/profile/avatar', { method: 'POST', body: formData });
+      let errorMsg = 'Upload failed';
+      try {
+        const json = await res.json();
+        if (!res.ok) {
+          errorMsg = json.details || json.error || errorMsg;
+        } else {
+          const busted = `${json.avatarUrl}?t=${Date.now()}`;
+          setProfileAvatar(busted);
+          setAvatarKey((k) => k + 1);
+          updateProfile({ avatarUrl: json.avatarUrl });
+          refreshProfile();
+          addToast('Profile photo updated', 'success');
+          return;
+        }
+      } catch {
+        errorMsg = res.statusText || errorMsg;
+      }
+      addToast(errorMsg, 'error');
+    } catch {
+      addToast('Network error — check your connection and try again.', 'error');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleProfileSave = async () => {
+    setProfileSaving(true);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: profileName.trim() }),
+      });
+      if (res.ok) {
+        setProfileSaved(true);
+        setTimeout(() => setProfileSaved(false), 2000);
+        refreshProfile();
+      }
+    } catch {
+      // silent
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     await updateWorkspace(workspace.id, { name, industry, domain: domain || undefined });
@@ -146,21 +305,141 @@ export default function SettingsContent() {
     await deleteWorkspace(workspace.id);
     setShowDeleteConfirm(false);
     setDeleteConfirmText('');
-    const remaining = workspaces.filter(w => w.id !== workspace.id);
+    const remaining = workspaces.filter((w) => w.id !== workspace.id);
     router.push(remaining.length > 0 ? `/workspace/${remaining[0].id}` : '/auth/onboarding');
   };
 
-  const toggleNotif = (key: keyof NotificationPrefs) => {
+  const toggleNotif = async (key: keyof NotificationPrefs) => {
     const next = { ...notifPrefs, [key]: !notifPrefs[key] };
     setNotifPrefs(next);
-    localStorage.setItem(`catcham-notif-${workspace.id}`, JSON.stringify(next));
+    await fetch(`/api/workspace/${workspace.id}/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    });
   };
 
+  const handleSessionTimeoutChange = async (value: string) => {
+    const minutes = parseInt(value, 10);
+    setSessionTimeout(minutes);
+    await fetch(`/api/workspace/${workspace.id}/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionTimeout: minutes }),
+    });
+  };
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) {
+      setInviteError('Email is required');
+      return;
+    }
+    setInviteError('');
+    setInviting(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspace.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          displayName: inviteDisplayName.trim() || undefined,
+          role: inviteRole,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setInviteError(json.error || 'Failed to add member');
+        return;
+      }
+      setShowInviteModal(false);
+      setInviteEmail('');
+      setInviteDisplayName('');
+      setInviteRole('member');
+      fetchMembers();
+    } catch {
+      setInviteError('Network error');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const owner = members.find((m) => m.role === 'owner');
   const plan = planFeatures[workspace.plan] || planFeatures.sandbox;
   const isEnterprise = workspace.plan === 'enterprise';
 
   return (
     <div className="space-y-6 pb-12">
+      <SectionCard title="Profile" description="Your personal account information.">
+        <FieldRow label="Avatar" description="JPEG, PNG, WebP, or GIF. Max 2MB.">
+          <div className="flex items-center gap-4">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden border border-[#3d3a39] bg-[#101010] shrink-0">
+              {profileAvatar ? (
+                <img key={avatarKey} src={profileAvatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-lg font-semibold text-[#5a5a5a]">
+                  {user?.email?.[0]?.toUpperCase() ?? '?'}
+                </div>
+              )}
+              {uploadingAvatar && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-[#00C170] border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+            <div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleFileSelected}
+                className="hidden"
+              />
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="px-4 py-2 rounded-[6px] text-sm font-semibold border border-[#3d3a39] text-[#ffffff] hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+              >
+                {uploadingAvatar ? 'Uploading...' : 'Upload photo'}
+              </button>
+              {uploadError && (
+                <p className="text-xs text-[#ef4444] mt-3 animate-shake">{uploadError}</p>
+              )}
+            </div>
+          </div>
+        </FieldRow>
+        <AvatarCropModal
+          open={cropModalOpen}
+          imageSrc={cropImageSrc}
+          onSave={handleCropSave}
+          onClose={() => { setCropModalOpen(false); setCropImageSrc(null); }}
+        />
+        <FieldRow label="Display name" description="How your name appears across CatchAm.">
+          <input
+            type="text"
+            value={profileName}
+            onChange={(e) => setProfileName(e.target.value)}
+            className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-3 py-2 text-sm text-[#ffffff] placeholder-[#5a5a5a] outline-none focus:border-[#00C170] transition-colors"
+          />
+        </FieldRow>
+        <FieldRow label="Email" description="Your primary email address.">
+          <input
+            type="email"
+            value={profile?.email ?? user?.email ?? ''}
+            disabled
+            className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-3 py-2 text-sm text-[#5a5a5a] outline-none cursor-not-allowed"
+          />
+        </FieldRow>
+        <div className="flex items-center gap-3 pt-4">
+          <button
+            onClick={handleProfileSave}
+            disabled={profileSaving || !profileName.trim()}
+            className="px-5 py-2 rounded-[6px] text-sm font-semibold bg-[#00C170] text-[#0A0A0A] hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {profileSaving ? 'Saving...' : 'Save changes'}
+          </button>
+          {profileSaved && <span className="text-xs text-[#00C170] font-semibold">Profile updated</span>}
+        </div>
+      </SectionCard>
 
       <SectionCard title="General" description="Basic workspace information used across your CatchAm dashboard.">
         <FieldRow label="Workspace name" description="Used in reports and team invitations.">
@@ -203,16 +482,28 @@ export default function SettingsContent() {
       </SectionCard>
 
       <SectionCard title="Team" description="Manage who has access to this workspace.">
-        <div className="flex items-center justify-between py-3 border-b border-[#3d3a39]/50">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#00C170]/20 flex items-center justify-center text-sm font-bold text-[#00C170]">JD</div>
-            <div>
-              <p className="text-sm text-[#ffffff] font-medium">Joseph Jonah</p>
-              <p className="text-xs text-[#5a5a5a]">Owner</p>
-            </div>
+        {membersLoading ? (
+          <div className="divide-y divide-[#3d3a39]/50">
+            {[1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3 py-3 last:pb-0">
+                <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <Skeleton className="h-4 w-32 mb-1" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+                <Skeleton className="h-5 w-16 rounded-full shrink-0" />
+              </div>
+            ))}
           </div>
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-[#00C170]/20 text-[#00C170]">Admin</span>
-        </div>
+        ) : members.length === 0 ? (
+          <p className="text-sm text-[#5a5a5a] py-3">No members found.</p>
+        ) : (
+          <div>
+            {members.map((m) => (
+              <MemberRow key={m.id} member={m} isOwner={m.role === 'owner'} />
+            ))}
+          </div>
+        )}
         <div className="mt-4 flex items-center justify-between">
           <p className="text-xs text-[#5a5a5a]">
             {workspace.plan === 'sandbox'
@@ -221,50 +512,100 @@ export default function SettingsContent() {
                 ? 'Pro workspaces support up to 10 seats.'
                 : 'Enterprise workspaces have unlimited seats.'}
           </p>
-          <button className="px-4 py-2 rounded-[6px] text-sm font-semibold border border-[#3d3a39] text-[#ffffff] hover:bg-[#2a2a2a] transition-colors">
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="px-4 py-2 rounded-[6px] text-sm font-semibold border border-[#3d3a39] text-[#ffffff] hover:bg-[#2a2a2a] transition-colors"
+          >
             Invite member
           </button>
         </div>
       </SectionCard>
 
+      <Modal
+        open={showInviteModal}
+        onClose={() => { setShowInviteModal(false); setInviteError(''); }}
+        title="Invite member"
+        description="Add someone to this workspace by their email."
+        actions={
+          <>
+            <button
+              onClick={() => { setShowInviteModal(false); setInviteError(''); }}
+              className="px-4 py-2 rounded-[6px] text-sm font-semibold text-[#a0a0a0] hover:text-[#ffffff] hover:bg-[#262626] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleInvite}
+              disabled={inviting}
+              className="px-4 py-2 rounded-[6px] text-sm font-semibold bg-[#00C170] text-[#0A0A0A] hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {inviting ? 'Adding...' : 'Add member'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-[#a0a0a0] mb-1.5 uppercase tracking-wider">Email</label>
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="colleague@company.com"
+              className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-3 py-2 text-sm text-[#ffffff] placeholder-[#5a5a5a] outline-none focus:border-[#00C170] transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[#a0a0a0] mb-1.5 uppercase tracking-wider">Display name (optional)</label>
+            <input
+              type="text"
+              value={inviteDisplayName}
+              onChange={(e) => setInviteDisplayName(e.target.value)}
+              placeholder="e.g. Jane Doe"
+              className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-3 py-2 text-sm text-[#ffffff] placeholder-[#5a5a5a] outline-none focus:border-[#00C170] transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[#a0a0a0] mb-1.5 uppercase tracking-wider">Role</label>
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')}
+              className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-3 py-2 text-sm text-[#ffffff] outline-none focus:border-[#00C170] transition-colors appearance-none"
+            >
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          {inviteError && <p className="text-xs text-[#ef4444]">{inviteError}</p>}
+        </div>
+      </Modal>
+
       <SectionCard title="Notifications" description="How you receive alerts when flagged media is detected.">
         <div className="space-y-1">
-          <div className="flex items-center justify-between py-3 border-b border-[#3d3a39]/50">
-            <div>
-              <p className="text-sm text-[#ffffff]">Real-time alerts</p>
-              <p className="text-xs text-[#5a5a5a]">Push notifications the moment a threat is flagged</p>
-            </div>
-            <div
-              onClick={() => toggleNotif('realTime')}
-              className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${notifPrefs.realTime ? 'bg-[#00C170]' : 'bg-[#3d3a39]'}`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#ffffff] shadow transition-transform ${notifPrefs.realTime ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
-            </div>
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-[#3d3a39]/50">
-            <div>
-              <p className="text-sm text-[#ffffff]">Daily digest</p>
-              <p className="text-xs text-[#5a5a5a]">A single email each day with all alerts</p>
-            </div>
-            <div
-              onClick={() => toggleNotif('dailyDigest')}
-              className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${notifPrefs.dailyDigest ? 'bg-[#00C170]' : 'bg-[#3d3a39]'}`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#ffffff] shadow transition-transform ${notifPrefs.dailyDigest ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
-            </div>
-          </div>
-          <div className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-sm text-[#ffffff]">Weekly digest</p>
-              <p className="text-xs text-[#5a5a5a]">Weekly summary every Monday morning</p>
-            </div>
-            <div
-              onClick={() => toggleNotif('weeklyDigest')}
-              className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${notifPrefs.weeklyDigest ? 'bg-[#00C170]' : 'bg-[#3d3a39]'}`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#ffffff] shadow transition-transform ${notifPrefs.weeklyDigest ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
-            </div>
-          </div>
+          {(['realTime', 'dailyDigest', 'weeklyDigest'] as const).map((key) => {
+            const labels: Record<string, { title: string; desc: string }> = {
+              realTime: { title: 'Real-time alerts', desc: 'Push notifications the moment a threat is flagged' },
+              dailyDigest: { title: 'Daily digest', desc: 'A single email each day with all alerts' },
+              weeklyDigest: { title: 'Weekly digest', desc: 'Weekly summary every Monday morning' },
+            };
+            const l = labels[key];
+            return (
+              <div key={key} className="flex items-center justify-between py-3 border-b border-[#3d3a39]/50 last:border-0">
+                <div>
+                  <p className="text-sm text-[#ffffff]">{l.title}</p>
+                  <p className="text-xs text-[#5a5a5a]">{l.desc}</p>
+                </div>
+                <div
+                  onClick={() => toggleNotif(key)}
+                  className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${notifPrefs[key] ? 'bg-[#00C170]' : 'bg-[#3d3a39]'}`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#ffffff] shadow transition-transform ${notifPrefs[key] ? 'translate-x-[22px]' : 'translate-x-[2px]'}`}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </SectionCard>
 
@@ -272,7 +613,8 @@ export default function SettingsContent() {
         <FieldRow label="Session timeout" description="Auto-logout after inactivity.">
           <select
             className="w-full bg-[#101010] border border-[#3d3a39] rounded-[6px] px-3 py-2 text-sm text-[#ffffff] outline-none focus:border-[#00C170] transition-colors appearance-none"
-            defaultValue="30"
+            value={String(sessionTimeout)}
+            onChange={(e) => handleSessionTimeoutChange(e.target.value)}
           >
             <option value="15">15 minutes</option>
             <option value="30">30 minutes</option>
@@ -342,7 +684,7 @@ export default function SettingsContent() {
           open={showDeleteConfirm}
           onClose={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
           title="Delete workspace"
-          description="Irreversible actions that affect your entire workspace."
+          description="This action cannot be undone. All scans, alerts, and data will be permanently removed."
           danger
           actions={
             <>

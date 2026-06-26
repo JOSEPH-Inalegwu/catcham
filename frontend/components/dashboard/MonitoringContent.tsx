@@ -57,7 +57,7 @@ const MONITOR_ICONS: Record<string, JSX.Element> = {
 
 function MonitorMetricCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-[#1A1A1A] border border-[#2a2a2a] rounded-[8px] p-4 md:p-5 hover:border-[#3d3a39] transition-all group cursor-default">
+    <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-4 md:p-5 group cursor-default shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
       <div className="flex items-center gap-2 mb-2">
         <span className="shrink-0 text-[#5a5a5a]">{MONITOR_ICONS[label]}</span>
         <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] truncate">{label}</p>
@@ -229,15 +229,100 @@ export default function MonitoringContent() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-[72px] w-full rounded-[8px]" />
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-4 md:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-3 h-3 rounded-full" />
+              <div>
+                <Skeleton className="h-4 w-32 mb-1" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+            </div>
+            <Skeleton className="h-7 w-24 rounded-[6px]" />
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-[104px] rounded-[8px]" />)}
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Skeleton className="w-4 h-4" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+              <Skeleton className="h-8 w-12" />
+            </div>
+          ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Skeleton className="h-[300px] rounded-[8px]" />
-          <Skeleton className="h-[300px] rounded-[8px]" />
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="lg:col-span-3 bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+            <div className="hidden md:block">
+              <div className="flex gap-8 px-5 py-3.5 border-b border-[#3d3a39]">
+                {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-3 w-16" />)}
+              </div>
+              <div className="divide-y divide-[#3d3a39]/50">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-8 px-5 py-4">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Skeleton className="w-2 h-2 rounded-full shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-48 mt-1" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-4 w-8" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="md:hidden divide-y divide-[#3d3a39]/50">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="px-4 py-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="w-2 h-2 rounded-full" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-3 w-36" />
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
+              <div className="flex items-center gap-2">
+                <Skeleton className="w-1.5 h-1.5 rounded-full" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div className="divide-y divide-[#3d3a39]/50">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="px-4 py-3 flex items-start gap-3">
+                  <Skeleton className="w-1 h-8 rounded-full shrink-0" />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <Skeleton className="h-[200px] rounded-[8px]" />
       </div>
     );
   }
@@ -250,7 +335,7 @@ export default function MonitoringContent() {
   return (
     <div className="space-y-6">
       {/* ─── Crawler Status ─── */}
-      <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-4 md:p-5">
+      <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-4 md:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -260,7 +345,7 @@ export default function MonitoringContent() {
             <div>
               <div className="flex items-center gap-2.5">
                 <p className="text-sm font-semibold text-[#ffffff]">Crawler Active</p>
-                <span className="text-[10px] text-[#5a5a5a] font-mono bg-[#101010] px-2 py-0.5 rounded-full">
+                <span className="text-xs text-[#5a5a5a] bg-[#101010] px-2 py-0.5 rounded-full">
                   {crawler?.sourcesToday ?? 0} sources today
                 </span>
               </div>
@@ -291,10 +376,10 @@ export default function MonitoringContent() {
       {/* ─── Two-column: Targets + Alerts ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Surveillance Targets */}
-        <div className="lg:col-span-3 bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
+        <div className="lg:col-span-3 bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
             <h3 className="text-sm font-semibold text-[#ffffff]">Surveillance Targets</h3>
-            <span className="text-xs text-[#5a5a5a] font-mono">{targets.length} total</span>
+            <span className="text-xs text-[#5a5a5a]">{targets.length} total</span>
           </div>
 
           {targets.length === 0 ? (
@@ -327,7 +412,7 @@ export default function MonitoringContent() {
                             <StatusDot status={t.status} />
                             <div>
                               <p className="text-sm text-[#ffffff]">{t.label}</p>
-                              <p className="text-[10px] text-[#5a5a5a] font-mono truncate max-w-[260px]">{t.url}</p>
+                              <p className="text-xs text-[#5a5a5a] truncate max-w-[260px]">{t.url}</p>
                             </div>
                           </div>
                         </td>
@@ -339,7 +424,7 @@ export default function MonitoringContent() {
                           }`}>{t.status}</span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`text-xs font-mono ${t.alerts > 0 ? 'text-[#ef4444]' : 'text-[#5a5a5a]'}`}>
+                          <span className={`text-xs ${t.alerts > 0 ? 'text-[#ef4444]' : 'text-[#5a5a5a]'}`}>
                             {t.alerts}
                           </span>
                         </td>
@@ -367,10 +452,10 @@ export default function MonitoringContent() {
                         'bg-[#ef4444]/10 text-[#ef4444]'
                       }`}>{t.status}</span>
                     </div>
-                    <p className="text-xs text-[#a0a0a0] font-mono truncate">{t.url}</p>
+                    <p className="text-xs text-[#a0a0a0] truncate">{t.url}</p>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-[#5a5a5a]">{t.lastScan ? new Date(t.lastScan).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—'}</span>
-                      <span className={t.alerts > 0 ? 'text-[#ef4444] font-mono' : 'text-[#5a5a5a]'}>{t.alerts} alerts</span>
+                      <span className={t.alerts > 0 ? 'text-[#ef4444]' : 'text-[#5a5a5a]'}>{t.alerts} alerts</span>
                     </div>
                   </div>
                 ))}
@@ -380,7 +465,7 @@ export default function MonitoringContent() {
         </div>
 
         {/* Recent Alerts */}
-        <div className="lg:col-span-2 bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
+        <div className="lg:col-span-2 bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
@@ -413,7 +498,7 @@ export default function MonitoringContent() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm text-[#ffffff] truncate">{a.file}</p>
-                      <span className="text-xs font-mono text-[#a0a0a0] shrink-0">{a.confidence}%</span>
+                      <span className="text-xs text-[#a0a0a0] shrink-0">{a.confidence}%</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <VerdictBadge verdict={a.verdict} />
@@ -431,7 +516,7 @@ export default function MonitoringContent() {
 
       {/* ─── Activity Timeline ─── */}
       {alerts.length > 0 && (
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
           <h3 className="text-sm font-semibold text-[#ffffff] mb-4">Activity Timeline</h3>
           <div className="space-y-0">
             {alerts.slice(0, 8).map((a, i) => (
@@ -543,7 +628,7 @@ export default function MonitoringContent() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-xs text-[#a0a0a0]">Confidence</p>
-                <p className="text-[#ffffff] font-mono">{selectedAlert.confidence}%</p>
+                <p className="text-[#ffffff]">{selectedAlert.confidence}%</p>
               </div>
               <div>
                 <p className="text-xs text-[#a0a0a0]">Detected</p>

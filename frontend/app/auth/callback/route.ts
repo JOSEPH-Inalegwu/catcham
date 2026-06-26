@@ -8,8 +8,24 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (!error && data.user) {
+      const { id, email, user_metadata } = data.user;
+      const displayName = user_metadata?.full_name ?? user_metadata?.name ?? email ?? "User";
+      const avatarUrl = user_metadata?.avatar_url ?? user_metadata?.picture ?? null;
+
+      await supabase.from("profiles").upsert(
+        {
+          id,
+          email,
+          display_name: displayName,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

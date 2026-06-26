@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { scanFile, type ScanResult, type GenerationSource } from "@/lib/api";
 import Toast from "@/components/Toast";
+import Header from "@/components/Header";
 
 const dottedSvg = `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%233d3a39' stroke-width='1.5' stroke-dasharray='2%2c 16' stroke-linecap='round' rx='8' /%3e%3c/svg%3e")`;
 
@@ -69,7 +70,9 @@ export default function ScanPage() {
   );
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-56px)] max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+    <>
+      <Header />
+      <main className="mx-auto min-h-[calc(100vh-80px)] max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <div className="mb-6 text-center">
         <p className="text-xs font-semibold uppercase tracking-[2.52px] text-[#00d992]">
           Public Scanner
@@ -389,5 +392,6 @@ export default function ScanPage() {
         </div>
       </div>
     </main>
+    </>
   );
 }

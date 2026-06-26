@@ -25,9 +25,13 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data?.user;
+  } catch {
+    // Network or auth fetch failure — allow request through
+  }
 
   const protectedRoutes = ["/dashboard", "/workspace"];
   const isProtected = protectedRoutes.some((route) =>

@@ -76,7 +76,7 @@ const CARD_ICONS: Record<string, JSX.Element> = {
 
 function MetricCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-[#1A1A1A] border border-[#2a2a2a] rounded-[8px] p-5 hover:border-[#3d3a39] transition-all group cursor-default">
+    <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-5 group cursor-default shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
       <div className="flex items-center gap-2 mb-3">
         <span className="shrink-0 text-[#5a5a5a]">{CARD_ICONS[label]}</span>
         <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">{label}</p>
@@ -256,7 +256,7 @@ export default function OverviewContent() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
           <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-4">Detection Ratio</p>
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <DonutChart authentic={dr.authentic} suspicious={dr.suspicious} synthetic={dr.synthetic} />
@@ -264,45 +264,50 @@ export default function OverviewContent() {
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#00C170] shrink-0" />
                 <span className="text-sm text-[#ffffff]">Authentic</span>
-                <span className="text-sm text-[#a0a0a0] ml-auto font-mono">{(dr.authentic || 0)} ({drTotal > 0 ? Math.round(((dr.authentic || 0) / drTotal) * 100) : 0}%)</span>
+                <span className="text-sm text-[#a0a0a0] ml-auto">{(dr.authentic || 0)} ({drTotal > 0 ? Math.round(((dr.authentic || 0) / drTotal) * 100) : 0}%)</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#fbbf24] shrink-0" />
                 <span className="text-sm text-[#ffffff]">Suspicious</span>
-                <span className="text-sm text-[#a0a0a0] ml-auto font-mono">{(dr.suspicious || 0)} ({drTotal > 0 ? Math.round(((dr.suspicious || 0) / drTotal) * 100) : 0}%)</span>
+                <span className="text-sm text-[#a0a0a0] ml-auto">{(dr.suspicious || 0)} ({drTotal > 0 ? Math.round(((dr.suspicious || 0) / drTotal) * 100) : 0}%)</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] shrink-0" />
                 <span className="text-sm text-[#ffffff]">Synthetic</span>
-                <span className="text-sm text-[#a0a0a0] ml-auto font-mono">{(dr.synthetic || 0)} ({drTotal > 0 ? Math.round(((dr.synthetic || 0) / drTotal) * 100) : 0}%)</span>
+                <span className="text-sm text-[#a0a0a0] ml-auto">{(dr.synthetic || 0)} ({drTotal > 0 ? Math.round(((dr.synthetic || 0) / drTotal) * 100) : 0}%)</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
           <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e] mb-4">Confidence Distribution</p>
-          <div className="space-y-4">
+          <div className="h-3 w-full overflow-hidden rounded-full bg-[#3d3a39] flex">
+            {confidenceBands.filter(b => b.count > 0).length === 0 ? (
+              <div className="h-full rounded-full bg-[#3d3a39]" style={{ width: '100%' }} />
+            ) : confidenceBands.map((band, i) => (
+              band.count > 0 ? (
+                <div
+                  key={band.label}
+                  className="h-full first:rounded-l-full last:rounded-r-full"
+                  style={{ width: `${band.pct}%`, backgroundColor: band.color }}
+                />
+              ) : null
+            ))}
+          </div>
+          <div className="flex items-center gap-4 mt-3 text-xs text-[#a0a0a0]">
             {confidenceBands.map((band) => (
-              <div key={band.label}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs text-[#a0a0a0]">{band.label}</span>
-                  <span className="text-xs font-mono text-[#ffffff]">{band.count} scans</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-[#3d3a39]">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${band.pct}%`, backgroundColor: band.color }}
-                  />
-                </div>
-              </div>
+              <span key={band.label} className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: band.count > 0 ? band.color : '#3d3a39' }} />
+                {band.label} ({band.count})
+              </span>
             ))}
           </div>
         </div>
       </div>
 
       {flagged.length > 0 && (
-        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px]">
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3a39]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
@@ -331,7 +336,7 @@ export default function OverviewContent() {
                   }`}>
                     {item.verdict}
                   </span>
-                  <span className="text-xs font-mono text-[#a0a0a0]">{item.confidence}%</span>
+                  <span className="text-xs text-[#a0a0a0]">{item.confidence}%</span>
                 </div>
               </div>
             ))}
@@ -342,14 +347,14 @@ export default function OverviewContent() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
           href={`/workspace/${workspaceId}/scanner`}
-          className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 hover:border-[#00C170]/50 transition-colors group"
+          className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-5 hover:border-[#00C170]/50 hover:shadow-[0_4px_12px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all group shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]"
         >
           <p className="text-sm font-semibold text-[#ffffff] group-hover:text-[#00C170] transition-colors">New Scan</p>
           <p className="text-xs text-[#a0a0a0] mt-1">Upload a file or paste a URL for forensic analysis.</p>
         </Link>
         <Link
           href={`/workspace/${workspaceId}/usage`}
-          className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 hover:border-[#00C170]/50 transition-colors group"
+          className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-5 hover:border-[#00C170]/50 hover:shadow-[0_4px_12px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all group shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]"
         >
           <p className="text-sm font-semibold text-[#ffffff] group-hover:text-[#00C170] transition-colors">Usage Report</p>
           <p className="text-xs text-[#a0a0a0] mt-1">Review scan history, credits, and team activity.</p>

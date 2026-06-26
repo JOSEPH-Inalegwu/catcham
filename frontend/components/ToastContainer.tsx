@@ -14,7 +14,7 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-[380px] w-full pointer-events-none">
+    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-[380px] w-full pointer-events-none">
       {toasts.map((toast) => {
         const s = typeStyles[toast.type];
         return (

@@ -331,14 +331,46 @@ export default function BillingContent() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-[44px] w-[400px] rounded-[8px]" />
+        <div className="flex items-center gap-1 border-b border-[#3d3a39]">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-9 w-28 border-b-2 border-transparent -mb-[1px]" />)}
+        </div>
+
         <div className="flex flex-col-reverse lg:flex-row gap-6">
           <div className="flex-1 min-w-0 space-y-4">
-            <Skeleton className="h-[120px] w-full rounded-[8px]" />
-            <Skeleton className="h-[120px] w-full rounded-[8px]" />
+            <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <Skeleton className="h-4 w-36 mb-1" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#3d3a39]">
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-8 w-28 rounded-[6px]" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <Skeleton className="h-4 w-44 mb-1" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+                <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#3d3a39]">
+                  <Skeleton className="h-6 w-24" />
+                  <Skeleton className="h-8 w-28 rounded-[6px]" />
+                </div>
+              </div>
+            </div>
           </div>
+
           <div className="w-full lg:w-[280px] flex-shrink-0">
-            <Skeleton className="h-[180px] w-full rounded-[8px]" />
+            <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-6">
+              <Skeleton className="h-3 w-24 mb-3" />
+              <Skeleton className="h-9 w-16 mb-2" />
+              <Skeleton className="h-1.5 w-full rounded-full mb-2" />
+              <Skeleton className="h-3 w-36" />
+            </div>
           </div>
         </div>
       </div>

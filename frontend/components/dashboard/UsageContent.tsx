@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Skeleton } from '@/components/Skeleton';
 
@@ -64,6 +64,96 @@ function getDaysForPreset(preset: RangePreset): number {
     case '30d': return 30;
     default: return 30;
   }
+}
+
+function ScansBarChart({ rows }: { rows: UsageRow[] }) {
+  const [tooltip, setTooltip] = useState<{ data: { date: string; total: number }; day: number; x: number } | null>(null);
+
+  const days = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of rows) {
+      const key = r.date.slice(0, 10);
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const today = now.getDate();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const result: { day: number; date: string; total: number }[] = [];
+    for (let d = 1; d <= totalDays; d++) {
+      const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      result.push({ day: d, date: key, total: map.get(key) ?? 0 });
+    }
+    return result;
+  }, [rows]);
+
+  const maxTotal = Math.max(...days.map(d => d.total), 1);
+  const today = new Date().getDate();
+
+  return (
+    <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] relative select-none"
+      onMouseLeave={() => setTooltip(null)}
+    >
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-[10px] font-mono uppercase tracking-[1.5px] text-[#8b949e]">Scan Activity</p>
+        <p className="text-xs text-[#5a5a5a]">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+      </div>
+
+      <div className="overflow-x-auto pb-2 -mx-1">
+        <div className="h-[220px] flex items-end gap-[4px] px-1 min-w-max">
+          {days.map((d) => {
+            const pct = (d.total / maxTotal) * 100;
+            const isToday = d.day === today;
+            return (
+              <div
+                key={d.date}
+                className="w-[28px] relative h-full flex flex-col items-center justify-end"
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const parent = e.currentTarget.parentElement!.getBoundingClientRect();
+                  setTooltip({ data: d, day: d.day, x: rect.left - parent.left + rect.width / 2 });
+                }}
+              >
+                <div
+                  className="w-[22px] rounded-t-[3px] transition-all duration-300"
+                  style={{
+                    height: `${Math.max(pct, 4)}%`,
+                    backgroundColor: isToday ? '#00C170' : '#3d3a39',
+                    opacity: isToday ? 0.85 : 0.45,
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex mt-2 justify-center gap-[4px] overflow-x-auto -mx-1 pb-1">
+        {days.map((d) => (
+          <div key={d.date} className="w-[28px] shrink-0 text-center">
+            <span className={`text-[10px] truncate block leading-none ${d.day === today ? 'text-[#a0a0a0]' : 'text-[#5a5a5a]'}`}>
+              {d.day}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {tooltip && (
+        <div
+          className="absolute z-10 bg-[#262626] border border-[#3d3a39] rounded-[6px] px-3 py-2.5 pointer-events-none shadow-xl"
+          style={{ left: tooltip.x, top: '50%', transform: 'translateX(-50%) translateY(-50%)' }}
+        >
+          <p className="text-xs text-[#ffffff] font-medium mb-1 whitespace-nowrap">
+            {new Date(tooltip.data.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
+          </p>
+          <p className="text-[10px] text-[#a0a0a0] font-mono">
+            {tooltip.data.total} scan{tooltip.data.total !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const planLabels: Record<string, string> = {
@@ -141,11 +231,68 @@ export default function UsageContent() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-[40px] w-[420px] rounded-[8px]" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[110px] rounded-[8px]" />)}
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-1 w-fit">
+          <div className="flex gap-1">
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-7 w-16 rounded-[6px]" />)}
+          </div>
         </div>
-        <Skeleton className="h-[360px] w-full rounded-[8px]" />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Skeleton className="w-4 h-4" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-4 w-10" />
+              </div>
+              <Skeleton className="h-1.5 w-full rounded-full mt-4" />
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] rounded-[8px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="flex items-center justify-between mb-5">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <div className="h-[220px] flex items-end gap-[4px]">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div key={i} className="w-[28px] h-full flex flex-col items-center justify-end">
+                <div
+                  className="w-[22px] rounded-t-[3px]"
+                  style={{ height: `${(i % 5) * 12 + 4}%`, backgroundColor: '#3d3a39', opacity: 0.45 }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex mt-2 gap-[4px]">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div key={i} className="w-[28px] text-center">
+                <Skeleton className="h-3 w-4 mx-auto" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] overflow-hidden">
+          <div className="flex gap-8 px-5 py-3.5 border-b border-[#3d3a39]">
+            {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-3 w-16" />)}
+          </div>
+          <div className="divide-y divide-[#3d3a39]/50">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-8 px-5 py-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-10" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -213,7 +360,7 @@ export default function UsageContent() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#1A1A1A] border border-[#2a2a2a] rounded-[8px] p-5 hover:border-[#3d3a39] transition-all group">
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] rounded-[8px] p-5">
           <div className="flex items-center gap-2 mb-2">
             <svg className="w-4 h-4 text-[#5a5a5a] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -228,7 +375,7 @@ export default function UsageContent() {
           </div>
         </div>
 
-        <div className="bg-[#1A1A1A] border border-[#2a2a2a] rounded-[8px] p-5 hover:border-[#3d3a39] transition-all group">
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] rounded-[8px] p-5">
           <div className="flex items-center gap-2 mb-2">
             <svg className="w-4 h-4 text-[#5a5a5a] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -246,7 +393,7 @@ export default function UsageContent() {
           </div>
         </div>
 
-        <div className="bg-[#1A1A1A] border border-[#2a2a2a] rounded-[8px] p-5 hover:border-[#3d3a39] transition-all group">
+        <div className="bg-[#1A1A1A] border border-[#1f1f1f] shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] rounded-[8px] p-5">
           <div className="flex items-center gap-2 mb-2">
             <svg className="w-4 h-4 text-[#5a5a5a] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -262,7 +409,9 @@ export default function UsageContent() {
         </div>
       </div>
 
-      <div className="space-y-4 mt-6">
+      <ScansBarChart rows={data?.scans ?? []} />
+
+      <div className="space-y-4">
         {rows.length === 0 ? (
           <div className="bg-[#1A1A1A] border border-[#3d3a39] rounded-[8px] p-8 text-center">
             <p className="text-sm text-[#5a5a5a]">No usage data for this range.</p>

@@ -200,7 +200,7 @@ export default function ScannerPage() {
         {scanResult ? (
           <>
             <VerdictCard result={scanResult} />
-            <MetricsPanel result={scanResult} />
+            <MetricsPanel result={scanResult} onGeneratePdf={handleGenerateReport} isSandbox={isSandbox} />
           </>
         ) : isScanning ? (
           <>

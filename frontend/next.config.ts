@@ -4,6 +4,7 @@ const nextConfig = {
       bodySizeLimit: "20mb",
     },
   },
+  serverExternalPackages: ["sharp"],
 };
 
 export default nextConfig;

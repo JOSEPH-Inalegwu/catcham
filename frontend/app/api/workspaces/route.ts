@@ -72,11 +72,13 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 
+  const displayName = user.user_metadata?.full_name ?? user.email ?? "Owner";
   const { error: memberError } = await supabase.from("workspace_members").insert({
     id: crypto.randomUUID(),
     workspace_id: id,
     user_id: user.id,
     role: "owner",
+    display_name: displayName,
   });
 
   if (memberError) {
