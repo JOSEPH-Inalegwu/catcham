@@ -92,9 +92,10 @@ function DonutChart({ authentic, suspicious, synthetic }: { authentic: number; s
   const a = authentic || 0;
   const s = suspicious || 0;
   const syn = synthetic || 0;
-  const total = a + s + syn || 1;
-  const aPct = Math.round((a / total) * 100);
-  const sPct = Math.round((s / total) * 100);
+  const total = a + s + syn;
+  const div = total || 1;
+  const aPct = Math.round((a / div) * 100);
+  const sPct = Math.round((s / div) * 100);
   const synPct = 100 - Math.max(0, aPct) - Math.max(0, sPct);
   const r = 60;
   const circ = 2 * Math.PI * r;
