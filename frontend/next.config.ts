@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 const nextConfig = {
   experimental: {
     serverActions: {
@@ -7,4 +9,4 @@ const nextConfig = {
   serverExternalPackages: ["sharp"],
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig);

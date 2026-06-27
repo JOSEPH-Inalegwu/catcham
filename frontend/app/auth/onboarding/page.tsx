@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RevealWrapper } from 'next-reveal';
 import { useWorkspace, PlanType } from '@/app/context/WorkspaceContext';
@@ -12,12 +12,15 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { workspaces, isHydrated, createWorkspace } = useWorkspace();
 
-  useEffect(() => {
+  const [redirecting, setRedirecting] = useState(false);
+
+  useLayoutEffect(() => {
     if (workspaces.length > 0) {
+      setRedirecting(true);
       router.replace(`/workspace/${workspaces[0].id}`);
     }
   }, [workspaces, router]);
-  
+
   const [step, setStep] = useState(1);
   const [workspaceName, setWorkspaceName] = useState('');
   const [industryVector, setIndustryVector] = useState('');
@@ -45,7 +48,7 @@ export default function OnboardingPage() {
     router.push(`/workspace/${newWs.id}${queryString}`);
   };
 
-  if (!isHydrated) {
+  if (!isHydrated || redirecting) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#101010] gap-6">
         <img

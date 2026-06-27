@@ -136,6 +136,11 @@ export default function OverviewContent() {
   const fetchOverview = useCallback(async () => {
     try {
       const res = await fetch(`/api/workspace/${workspaceId}/overview`);
+      if (!res.ok) {
+        console.error(`Overview API returned ${res.status}`);
+        setData(null);
+        return;
+      }
       const json = await res.json();
       setData(json);
     } catch {

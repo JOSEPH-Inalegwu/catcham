@@ -386,7 +386,7 @@ export async function POST(request: NextRequest) {
         : finalGlobalVerdict === "synthetic" ? "Synthetic"
         : "Suspicious";
 
-      await supabase.from("scans").insert({
+      const { error: scanInsertError } = await supabase.from("scans").insert({
         id: scanId,
         workspace_id: workspaceId,
         user_id: user.id,
@@ -401,8 +401,12 @@ export async function POST(request: NextRequest) {
         analysed_at: analysedAt,
       });
 
+      if (scanInsertError) {
+        console.error("Failed to insert scan record:", scanInsertError);
+      }
+
       if (faces.length > 0) {
-        await supabase.from("scan_faces").insert(
+        const { error: facesInsertError } = await supabase.from("scan_faces").insert(
           faces.map((face) => ({
             scan_id: scanId,
             score: Math.round(face.score * 100),
@@ -412,6 +416,10 @@ export async function POST(request: NextRequest) {
             box_height: face.box.ymax - face.box.ymin,
           }))
         );
+
+        if (facesInsertError) {
+          console.error("Failed to insert scan faces:", facesInsertError);
+        }
       }
     }
 

@@ -5,6 +5,7 @@ import { WorkspaceProvider } from "./context/WorkspaceContext";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import ToastContainer from "@/components/ToastContainer";
+import PostHogProvider from "@/components/PostHogProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -46,8 +47,10 @@ export default function RootLayout({
           <ToastProvider>
             <WorkspaceProvider>
               <ModeProvider>
-                {children}
-                <ToastContainer />
+                <PostHogProvider>
+                  {children}
+                  <ToastContainer />
+                </PostHogProvider>
               </ModeProvider>
             </WorkspaceProvider>
           </ToastProvider>

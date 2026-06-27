@@ -21,8 +21,13 @@ export default function Header() {
   const ctaLabel = mode === "free" ? "Start Scanning" : "Get Started";
 
   return (
-    <div className="h-20">
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#3d3a39] bg-[#101010]/95 backdrop-blur-md">
+    <div className="h-[130px]">
+      <div className="fixed top-0 left-0 right-0 z-50 border-b border-[#f59e0b]/30 bg-[#f59e0b]/10 py-2 text-center">
+        <p className="text-sm font-medium text-[#f59e0b]">
+          Enterprise dashboard with advanced forensic analysis — detailed reports, team management, real-time monitoring — coming soon for Pro and Enterprise plans.
+        </p>
+      </div>
+      <header className="fixed top-[28px] left-0 right-0 z-40 border-b border-[#3d3a39] bg-[#101010]/95 backdrop-blur-md">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-8 lg:px-12">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-1">
@@ -44,7 +49,7 @@ export default function Header() {
               </button>
               <button
                 onClick={() => setMode("pro")}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${mode === "pro"
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors hidden ${mode === "pro"
                   ? "bg-[#00d992] text-[#101010]"
                   : "text-[#bdbdbd] hover:text-[#f2f2f2]"
                   }`}

@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -30,7 +30,16 @@ export async function middleware(request: NextRequest) {
     const result = await supabase.auth.getUser();
     user = result.data?.user;
   } catch {
-    // Network or auth fetch failure — allow request through
+    // Network or auth fetch failure — try session fallback
+  }
+
+  if (!user) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      user = session?.user ?? null;
+    } catch {
+      // Both getUser and getSession failed — proceed without user
+    }
   }
 
   const protectedRoutes = ["/dashboard", "/workspace"];
