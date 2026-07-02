@@ -38,7 +38,7 @@ export default function FreeHero() {
                     }
                   }, 100);
                 }}
-                className="rounded-[6px] border border-[#3d3a39] px-6 py-3 text-base font-semibold text-[#f2f2f2] transition-colors hover:border-[#bdbdbd]"
+                className="hidden rounded-[6px] border border-[#3d3a39] px-6 py-3 text-base font-semibold text-[#f2f2f2] transition-colors hover:border-[#bdbdbd]"
               >
                 Explore Pro Tier
               </button>
