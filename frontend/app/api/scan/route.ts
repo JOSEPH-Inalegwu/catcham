@@ -17,7 +17,7 @@ function nextMidnightUtc(): Date {
 function getIp(request: NextRequest): string {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     ?? request.headers.get("x-real-ip")
-    ?? request.ip
+    ?? (request as any).ip
     ?? "127.0.0.1";
 }
 const HIVE_API_URL = "https://api.thehive.ai/api/v3/hive/ai-generated-and-deepfake-content-detection";

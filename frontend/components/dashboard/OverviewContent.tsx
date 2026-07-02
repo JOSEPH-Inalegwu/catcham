@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type JSX } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Skeleton } from '@/components/Skeleton';

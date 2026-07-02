@@ -38,7 +38,7 @@ export async function GET(
     (members ?? []).map(async (m) => {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("email, avatar_url, display_name as profile_name")
+        .select("email, avatar_url, display_name")
         .eq("id", m.user_id)
         .single();
 
@@ -46,7 +46,7 @@ export async function GET(
         id: m.id,
         userId: m.user_id,
         role: m.role,
-        displayName: m.display_name ?? profile?.profile_name ?? "Unknown",
+        displayName: m.display_name ?? profile?.display_name ?? "Unknown",
         email: profile?.email ?? "",
         avatarUrl: profile?.avatar_url ?? null,
         joinedAt: m.created_at,

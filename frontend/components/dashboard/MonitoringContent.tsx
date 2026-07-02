@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type JSX } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/app/context/ToastContext';
+
+type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 function AnimatedCounter({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);

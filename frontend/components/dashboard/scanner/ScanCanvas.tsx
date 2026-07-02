@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo, type Ref } from 'react';
 import { ScanResult } from './types';
 
 type ImgBounds = { top: number; left: number; width: number; height: number };
@@ -70,7 +70,7 @@ export default function ScanCanvas({
       <div ref={containerRef} className="relative inline-block max-w-full max-h-[580px]">
         {imageUrl && !isVideo && (
           <img
-            ref={imgRef}
+            ref={imgRef as Ref<HTMLImageElement>}
             src={imageUrl}
             alt="Scan Target"
             className={`block max-w-full max-h-[580px] object-contain transition-opacity duration-300 ${isScanning ? 'opacity-50' : 'opacity-100'}`}
