@@ -147,7 +147,7 @@ export default function ScanPage() {
   return (
     <>
       <Header />
-      <main className="mx-auto min-h-[calc(100vh-80px)] max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <main className="mx-auto min-h-[calc(100vh-112px)] max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <div className="mb-6 text-center">
         <p className="text-xs font-semibold uppercase tracking-[2.52px] text-[#00d992]">
           Public Scanner
