@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HIVE_GENERATIVE_MODELS } from "@/lib/hive-models";
+import { createClient } from "@supabase/supabase-js";
 
 const HIVE_API_KEY = process.env.HIVE_API_KEY;
+const MAX_SCANS = 3;
+
+function midnightUtc(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function nextMidnightUtc(): Date {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+}
+
+function getIp(request: NextRequest): string {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? request.headers.get("x-real-ip")
+    ?? request.ip
+    ?? "127.0.0.1";
+}
 const HIVE_API_URL = "https://api.thehive.ai/api/v3/hive/ai-generated-and-deepfake-content-detection";
 
 const MODEL_LABELS: Record<string, string> = {
@@ -82,6 +100,64 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const ip = getIp(request);
+
+    const { data: record, error: lookupErr } = await supabase
+      .from("public_scan_limits")
+      .select("id, scan_count, window_start")
+      .eq("ip_address", ip)
+      .maybeSingle();
+
+    if (lookupErr) {
+      console.error("Rate limit lookup error:", lookupErr);
+    }
+
+    let dbCount = 0;
+    let shouldBlock = false;
+    let retryAfter: string | null = null;
+
+    if (record) {
+      const now = new Date();
+      const todayMidnight = midnightUtc(now);
+      const windowDay = midnightUtc(new Date(record.window_start));
+
+      if (windowDay < todayMidnight) {
+        const { error: resetErr } = await supabase
+          .from("public_scan_limits")
+          .update({ scan_count: 1, window_start: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("id", record.id);
+        if (resetErr) console.error("Rate limit reset error:", resetErr);
+        dbCount = 1;
+      } else {
+        dbCount = record.scan_count;
+        if (dbCount >= MAX_SCANS) {
+          shouldBlock = true;
+          retryAfter = nextMidnightUtc().toISOString();
+        }
+      }
+    } else {
+      const { error: insertErr } = await supabase
+        .from("public_scan_limits")
+        .insert({ ip_address: ip, scan_count: 0 });
+      if (insertErr) console.error("Rate limit insert error:", insertErr);
+      dbCount = 0;
+    }
+
+    if (shouldBlock) {
+      return NextResponse.json(
+        {
+          error: "Scan limit reached. Try again in 24 hours.",
+          retryAfter,
+          _debug: { ip, dbCount, blocked: true },
+        },
+        { status: 429 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -183,6 +259,22 @@ export async function POST(request: NextRequest) {
     generation_sources.sort(
       (a, b) => parseFloat(b.probability) - parseFloat(a.probability)
     );
+
+    const { data: current } = await supabase
+      .from("public_scan_limits")
+      .select("scan_count")
+      .eq("ip_address", ip)
+      .maybeSingle();
+    if (current) {
+      await supabase
+        .from("public_scan_limits")
+        .update({ scan_count: current.scan_count + 1, updated_at: new Date().toISOString() })
+        .eq("ip_address", ip);
+    } else {
+      await supabase
+        .from("public_scan_limits")
+        .insert({ ip_address: ip, scan_count: 1 });
+    }
 
     return NextResponse.json({
       success: true,

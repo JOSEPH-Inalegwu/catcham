@@ -1,11 +1,19 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { scanFile, type ScanResult, type GenerationSource } from "@/lib/api";
+import { scanFile, checkScanLimits, joinWaitlist, RateLimitError, type ScanResult, type ScanLimits } from "@/lib/api";
 import Toast from "@/components/Toast";
 import Header from "@/components/Header";
 
 const dottedSvg = `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%233d3a39' stroke-width='1.5' stroke-dasharray='2%2c 16' stroke-linecap='round' rx='8' /%3e%3c/svg%3e")`;
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "00:00:00";
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
 export default function ScanPage() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -15,6 +23,47 @@ export default function ScanPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [limits, setLimits] = useState<ScanLimits | null>(null);
+  const [countdown, setCountdown] = useState<string | null>(null);
+  const [waitlistEmail, setWaitlistEmail] = useState("");
+  const [waitlistSent, setWaitlistSent] = useState(false);
+  const [waitlistError, setWaitlistError] = useState("");
+  const [showRateModal, setShowRateModal] = useState(false);
+
+  const fetchLimits = useCallback(async () => {
+    try {
+      const l = await checkScanLimits();
+      setLimits(l);
+      if (l.window_end) {
+        setCountdown(formatCountdown(new Date(l.window_end).getTime() - Date.now()));
+      }
+    } catch {
+      setLimits({ remaining: 3, total: 3, window_end: null });
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLimits();
+  }, [fetchLimits]);
+
+  useEffect(() => {
+    if (!limits?.window_end) {
+      setCountdown(null);
+      return;
+    }
+    const tick = setInterval(() => {
+      const remaining = new Date(limits.window_end!).getTime() - Date.now();
+      if (remaining <= 0) {
+        setCountdown(null);
+        setLimits({ remaining: 3, total: 3, window_end: null });
+        setShowRateModal(false);
+        clearInterval(tick);
+      } else {
+        setCountdown(formatCountdown(remaining));
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [limits?.window_end]);
 
   const handleFile = useCallback((f: File) => {
     setFile(f);
@@ -46,13 +95,39 @@ export default function ScanPage() {
       setProgress(100);
       setResult(scanResult);
       setScanning(false);
+
+      if (limits && limits.remaining > 0) {
+        const updated = { ...limits, remaining: limits.remaining - 1 };
+        setLimits(updated);
+      }
     } catch (err) {
       clearInterval(progressInterval);
-      setError(err instanceof Error ? err.message : "Scan failed");
       setScanning(false);
       setProgress(0);
+
+      if (err instanceof RateLimitError) {
+        setLimits({ remaining: 0, total: 3, window_end: err.retryAfter });
+        setCountdown(formatCountdown(new Date(err.retryAfter).getTime() - Date.now()));
+        setShowRateModal(true);
+      } else {
+        setError(err instanceof Error ? err.message : "Scan failed");
+      }
     }
-  }, [file, scanning]);
+  }, [file, scanning, limits, preview]);
+
+  const handleWaitlistSubmit = useCallback(async () => {
+    if (!waitlistEmail.includes("@")) {
+      setWaitlistError("Enter a valid email address");
+      return;
+    }
+    setWaitlistError("");
+    try {
+      await joinWaitlist(waitlistEmail);
+      setWaitlistSent(true);
+    } catch {
+      setWaitlistError("Could not join waitlist. Try again.");
+    }
+  }, [waitlistEmail]);
 
   useEffect(() => {
     return () => {
@@ -80,6 +155,7 @@ export default function ScanPage() {
         <h1 className="mt-1 text-2xl font-normal tracking-[-0.6px] text-[#ffffff] sm:text-3xl">
           Check a file for synthetic content
         </h1>
+
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -392,6 +468,61 @@ export default function ScanPage() {
         </div>
       </div>
     </main>
+
+    {showRateModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+        <div className="w-full max-w-md rounded-[8px] border border-[#3d3a39] bg-[#101010] p-6">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <p className="text-sm font-semibold text-[#f2f2f2]">Daily limit reached</p>
+            <p className="text-sm text-[#bdbdbd]">
+              You've used all 3 scans today. Resets at midnight UTC.
+            </p>
+            {countdown && (
+              <p className="font-mono text-3xl font-bold tracking-wider text-[#00d992]">
+                {countdown}
+              </p>
+            )}
+            <div className="mt-2 w-full space-y-3">
+              <p className="text-xs text-[#8b949e]">
+                Need more scans? Join the waitlist for early access to advanced scanning.
+              </p>
+              {!waitlistSent ? (
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={waitlistEmail}
+                    onChange={(e) => setWaitlistEmail(e.target.value)}
+                    className="min-w-0 flex-1 rounded-[6px] border border-[#3d3a39] bg-[#1a1a1a] px-3 py-2 text-sm text-[#f2f2f2] placeholder-[#8b949e] outline-none focus:border-[#00d992]"
+                  />
+                  <button
+                    onClick={handleWaitlistSubmit}
+                    className="shrink-0 rounded-[6px] bg-[#00d992] px-3 py-2 text-sm font-semibold text-[#101010] transition-opacity hover:opacity-90"
+                  >
+                    Join
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-[#00d992]">
+                  You're on the list. We'll reach out soon.
+                </p>
+              )}
+              {waitlistError && <p className="text-xs text-[#f87171]">{waitlistError}</p>}
+            </div>
+            <button
+              onClick={() => setShowRateModal(false)}
+              className="mt-2 rounded-[6px] border border-[#3d3a39] px-4 py-2 text-sm font-semibold text-[#f2f2f2] transition-colors hover:border-[#bdbdbd]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

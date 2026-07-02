@@ -19,10 +19,34 @@ export type ScanResult = {
   analysed_at: string;
 };
 
+export type ScanLimits = {
+  remaining: number;
+  total: number;
+  window_end: string | null;
+};
+
+export class RateLimitError extends Error {
+  retryAfter: string;
+
+  constructor(message: string, retryAfter: string) {
+    super(message);
+    this.name = "RateLimitError";
+    this.retryAfter = retryAfter;
+  }
+}
+
 function generateId(): string {
   const ts = Date.now().toString(36).toUpperCase();
   const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `RPT-${ts}-${suffix}`;
+}
+
+export async function checkScanLimits(): Promise<ScanLimits> {
+  const response = await fetch("/api/scan/limits");
+  if (!response.ok) {
+    return { remaining: 0, total: 3, window_end: null };
+  }
+  return response.json();
 }
 
 export async function scanFile(file: File): Promise<ScanResult> {
@@ -35,6 +59,10 @@ export async function scanFile(file: File): Promise<ScanResult> {
   });
 
   const data = await response.json();
+
+  if (response.status === 429) {
+    throw new RateLimitError(data.error ?? "Scan limit reached", data.retryAfter);
+  }
 
   if (!response.ok) {
     throw new Error(data.error ?? "Scan failed");
@@ -75,4 +103,17 @@ export async function getReport(id: string): Promise<ScanResult | null> {
     throw new Error("Failed to fetch report");
   }
   return response.json();
+}
+
+export async function joinWaitlist(email: string): Promise<void> {
+  const response = await fetch("/api/waitlist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error ?? "Failed to join waitlist");
+  }
 }
