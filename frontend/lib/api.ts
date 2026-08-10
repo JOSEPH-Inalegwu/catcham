@@ -61,7 +61,10 @@ export async function scanFile(file: File): Promise<ScanResult> {
   const data = await response.json();
 
   if (response.status === 429) {
-    throw new RateLimitError(data.error ?? "Scan limit reached", data.retryAfter);
+    throw new RateLimitError(
+      "You've used your 3 free scans today. Sign up for a free account to get more.",
+      data.retryAfter,
+    );
   }
 
   if (!response.ok) {

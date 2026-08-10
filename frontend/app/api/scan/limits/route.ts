@@ -12,16 +12,12 @@ function getIp(request: NextRequest): string {
     ?? "127.0.0.1";
 }
 
-function midnightUtc(date: Date): number {
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-}
-
 export async function GET(request: NextRequest) {
   const ip = getIp(request);
 
   const { data: record } = await supabase
-    .from("public_scan_limits")
-    .select("scan_count, window_start")
+    .from("anonymous_scan_limits")
+    .select("scan_count, last_scan_date")
     .eq("ip_address", ip)
     .maybeSingle();
 
@@ -29,10 +25,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ remaining: 3, total: 3, window_end: null });
   }
 
-  const todayMidnight = midnightUtc(new Date());
-  const windowDay = midnightUtc(new Date(record.window_start));
+  const today = new Date().toISOString().slice(0, 10);
 
-  if (windowDay < todayMidnight) {
+  if (record.last_scan_date !== today) {
     return NextResponse.json({ remaining: 3, total: 3, window_end: null });
   }
 

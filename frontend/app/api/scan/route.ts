@@ -5,10 +5,6 @@ import { createClient } from "@supabase/supabase-js";
 const HIVE_API_KEY = process.env.HIVE_API_KEY;
 const MAX_SCANS = 3;
 
-function midnightUtc(date: Date): number {
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-}
-
 function nextMidnightUtc(): Date {
   const d = new Date();
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
@@ -105,56 +101,38 @@ export async function POST(request: NextRequest) {
     );
     const ip = getIp(request);
 
+    const today = new Date().toISOString().slice(0, 10);
     const { data: record, error: lookupErr } = await supabase
-      .from("public_scan_limits")
-      .select("id, scan_count, window_start")
+      .from("anonymous_scan_limits")
+      .select("ip_address, scan_count, last_scan_date")
       .eq("ip_address", ip)
       .maybeSingle();
 
     if (lookupErr) {
       console.error("Rate limit lookup error:", lookupErr);
+      return NextResponse.json({ error: "Unable to verify scan limit" }, { status: 503 });
     }
 
-    let dbCount = 0;
-    let shouldBlock = false;
-    let retryAfter: string | null = null;
-
-    if (record) {
-      const now = new Date();
-      const todayMidnight = midnightUtc(now);
-      const windowDay = midnightUtc(new Date(record.window_start));
-
-      if (windowDay < todayMidnight) {
-        const { error: resetErr } = await supabase
-          .from("public_scan_limits")
-          .update({ scan_count: 1, window_start: new Date().toISOString(), updated_at: new Date().toISOString() })
-          .eq("id", record.id);
-        if (resetErr) console.error("Rate limit reset error:", resetErr);
-        dbCount = 1;
-      } else {
-        dbCount = record.scan_count;
-        if (dbCount >= MAX_SCANS) {
-          shouldBlock = true;
-          retryAfter = nextMidnightUtc().toISOString();
-        }
-      }
-    } else {
-      const { error: insertErr } = await supabase
-        .from("public_scan_limits")
-        .insert({ ip_address: ip, scan_count: 0 });
-      if (insertErr) console.error("Rate limit insert error:", insertErr);
-      dbCount = 0;
-    }
-
-    if (shouldBlock) {
+    if (record?.last_scan_date === today && record.scan_count >= MAX_SCANS) {
       return NextResponse.json(
-        {
-          error: "Scan limit reached. Try again in 24 hours.",
-          retryAfter,
-          _debug: { ip, dbCount, blocked: true },
-        },
-        { status: 429 }
+        { error: "Daily scan limit reached. Create a free account for more scans.", retryAfter: nextMidnightUtc().toISOString() },
+        { status: 429 },
       );
+    }
+
+    const nextCount = record?.last_scan_date === today ? record.scan_count + 1 : 1;
+    const { error: countError } = record
+      ? await supabase
+          .from("anonymous_scan_limits")
+          .update({ scan_count: nextCount, last_scan_date: today })
+          .eq("ip_address", ip)
+      : await supabase
+          .from("anonymous_scan_limits")
+          .insert({ ip_address: ip, scan_count: 1, last_scan_date: today });
+
+    if (countError) {
+      console.error("Rate limit update error:", countError);
+      return NextResponse.json({ error: "Unable to reserve scan" }, { status: 503 });
     }
 
     const formData = await request.formData();
@@ -258,22 +236,6 @@ export async function POST(request: NextRequest) {
     generation_sources.sort(
       (a, b) => parseFloat(b.probability) - parseFloat(a.probability)
     );
-
-    const { data: current } = await supabase
-      .from("public_scan_limits")
-      .select("scan_count")
-      .eq("ip_address", ip)
-      .maybeSingle();
-    if (current) {
-      await supabase
-        .from("public_scan_limits")
-        .update({ scan_count: current.scan_count + 1, updated_at: new Date().toISOString() })
-        .eq("ip_address", ip);
-    } else {
-      await supabase
-        .from("public_scan_limits")
-        .insert({ ip_address: ip, scan_count: 1 });
-    }
 
     return NextResponse.json({
       success: true,

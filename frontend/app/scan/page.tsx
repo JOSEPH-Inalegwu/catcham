@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { scanFile, checkScanLimits, joinWaitlist, RateLimitError, type ScanResult, type ScanLimits } from "@/lib/api";
 import Toast from "@/components/Toast";
 import Header from "@/components/Header";
+import Link from "next/link";
 
 const dottedSvg = `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%233d3a39' stroke-width='1.5' stroke-dasharray='2%2c 16' stroke-linecap='round' rx='8' /%3e%3c/svg%3e")`;
 
@@ -478,15 +479,23 @@ export default function ScanPage() {
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
             <p className="text-sm font-semibold text-[#f2f2f2]">Daily limit reached</p>
-            <p className="text-sm text-[#bdbdbd]">
-              You've used all 3 scans today. Resets at midnight UTC.
-            </p>
+             <p className="text-sm text-[#bdbdbd]">
+               You've used your 3 free scans today. Sign up for a free account to get more.
+             </p>
             {countdown && (
               <p className="font-mono text-3xl font-bold tracking-wider text-[#00d992]">
                 {countdown}
               </p>
             )}
-            <div className="mt-2 w-full space-y-3">
+             <div className="mt-2 w-full space-y-3">
+               <div className="flex gap-2">
+                 <Link href="/auth/signup" className="flex-1 rounded-[6px] bg-[#00d992] px-3 py-2 text-center text-sm font-semibold text-[#101010] transition-opacity hover:opacity-90">
+                   Sign up free
+                 </Link>
+                 <Link href="/auth/login" className="flex-1 rounded-[6px] border border-[#00d992] px-3 py-2 text-center text-sm font-semibold text-[#00d992] transition-opacity hover:opacity-90">
+                   Log in
+                 </Link>
+               </div>
               <p className="text-xs text-[#8b949e]">
                 Need more scans? Join the waitlist for early access to advanced scanning.
               </p>
