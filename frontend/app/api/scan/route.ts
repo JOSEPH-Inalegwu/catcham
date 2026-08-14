@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HIVE_GENERATIVE_MODELS } from "@/lib/hive-models";
 import { createClient } from "@supabase/supabase-js";
+import ffmpeg from "fluent-ffmpeg";
+import { writeFile, readFile, unlink } from "fs/promises";
+import { randomUUID } from "crypto";
+import { tmpdir } from "os";
+import { execSync } from "child_process";
+import path from "path";
 
 const HIVE_API_KEY = process.env.HIVE_API_KEY;
 const MAX_SCANS = 3;
+
+type MediaType = "image" | "video" | "audio";
+
+const MEDIA_LIMITS: Record<MediaType, { exts: string[]; maxBytes: number }> = {
+  image: { exts: ["jpg", "jpeg", "png", "webp", "gif", "bmp"], maxBytes: 10 * 1024 * 1024 },
+  video: { exts: ["mp4", "mov", "avi", "webm"], maxBytes: 100 * 1024 * 1024 },
+  audio: { exts: ["mp3", "wav", "m4a", "ogg"], maxBytes: 50 * 1024 * 1024 },
+};
+
+function classifyFile(fileName: string): MediaType | null {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  for (const [type, limit] of Object.entries(MEDIA_LIMITS)) {
+    if (limit.exts.includes(ext)) return type as MediaType;
+  }
+  return null;
+}
 
 function nextMidnightUtc(): Date {
   const d = new Date();
@@ -56,12 +78,12 @@ const MODEL_LABELS: Record<string, string> = {
   krea: "Krea",
   deepfloyd: "DeepFloyd",
   bingimagecreator: "Bing Image Creator",
-  "longcat": "LongCat",
+  longcat: "LongCat",
   dreamid: "DreamID",
   hedra: "Hedra",
   var: "VAR",
   gan: "GAN",
-  "reve": "Reve",
+  reve: "Reve",
   personalive: "PersonaLive",
   zimage: "ZImage",
   moonvalley: "Moon Valley",
@@ -135,6 +157,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unable to reserve scan" }, { status: 503 });
     }
 
+    const refundScan = async (reason: string) => {
+      try {
+        const { data: row } = await supabase
+          .from("anonymous_scan_limits")
+          .select("scan_count")
+          .eq("ip_address", ip)
+          .maybeSingle();
+        if (row && row.scan_count > 0) {
+          await supabase
+            .from("anonymous_scan_limits")
+            .update({ scan_count: row.scan_count - 1 })
+            .eq("ip_address", ip);
+          console.log(`Scan refunded for IP: ${ip} — reason: ${reason}`);
+        }
+      } catch (err) {
+        console.error("Failed to refund scan:", err);
+      }
+    };
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -142,22 +183,115 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const base64String = buffer.toString("base64");
+    const mediaType = classifyFile(file.name);
+    if (!mediaType) {
+      return NextResponse.json(
+        { error: "Unsupported file format. Upload an image (jpg, png, webp), video (mp4, mov, avi, webm), or audio (mp3, wav, m4a, ogg) file." },
+        { status: 415 }
+      );
+    }
 
-    const response = await fetch(HIVE_API_URL, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${HIVE_API_KEY.trim()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        input: [{ media_base64: base64String }],
-      }),
-    });
+    const { maxBytes } = MEDIA_LIMITS[mediaType];
+    if (file.size > maxBytes) {
+      return NextResponse.json(
+        { error: `File too large. ${mediaType[0].toUpperCase() + mediaType.slice(1)} files must be under ${Math.round(maxBytes / (1024 * 1024))}MB.` },
+        { status: 413 }
+      );
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(await file.arrayBuffer());
+    } catch (err: any) {
+      console.error("Failed to read file:", err);
+      return NextResponse.json({ error: "Failed to read file" }, { status: 500 });
+    }
+
+    if (mediaType === "video") {
+      let ffmpegAvailable = false;
+      try {
+        execSync("ffmpeg -version", { stdio: "ignore", timeout: 5000 });
+        ffmpegAvailable = true;
+      } catch {}
+
+      if (ffmpegAvailable) {
+        const inputPath = path.join(tmpdir(), `catcham-${randomUUID()}.mp4`);
+
+        try {
+          await writeFile(inputPath, buffer);
+
+          const duration = await new Promise<number>((resolve, reject) => {
+            (ffmpeg as unknown as { ffprobe: (file: string, cb: (err: Error | null, data: { format: { duration?: number } }) => void) => void }).ffprobe(
+              inputPath,
+              (err, data) => {
+                if (err) return reject(err);
+                resolve(data?.format?.duration ?? 0);
+              }
+            );
+          });
+
+          if (duration > 60) {
+            const outputPath = path.join(tmpdir(), `catcham-trimmed-${randomUUID()}.mp4`);
+
+            await new Promise<void>((resolve, reject) => {
+              ffmpeg(inputPath)
+                .outputOptions(["-t", "60", "-c", "copy"])
+                .output(outputPath)
+                .on("end", () => resolve())
+                .on("error", (err) => reject(err))
+                .run();
+            });
+
+            buffer = await readFile(outputPath);
+            await Promise.all([unlink(outputPath).catch(() => {}), unlink(inputPath).catch(() => {})]);
+          } else {
+            await unlink(inputPath).catch(() => {});
+          }
+        } catch (err: any) {
+          await unlink(inputPath).catch(() => {});
+          console.error("Video processing failed:", err);
+          return NextResponse.json({ error: "Video must be under 60 seconds" }, { status: 422 });
+        }
+      }
+    }
+
+    let hiveInput: { media_base64: string } | FormData;
+
+    if (mediaType === "image") {
+      hiveInput = { media_base64: buffer.toString("base64") };
+    } else {
+      const blob = new Blob([new Uint8Array(buffer)], { type: file.type || "application/octet-stream" });
+      const multiForm = new FormData();
+      multiForm.append("media", blob, file.name);
+      hiveInput = multiForm;
+    }
+
+    const isMultipart = hiveInput instanceof FormData;
+
+    let response: Response;
+    try {
+      response = await fetch(HIVE_API_URL, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${HIVE_API_KEY.trim()}`,
+          ...(isMultipart ? {} : { "Content-Type": "application/json" }),
+        },
+        body: isMultipart
+          ? (hiveInput as FormData)
+          : JSON.stringify({ input: [(hiveInput as { media_base64: string })] }),
+      });
+    } catch (err: any) {
+      console.error("Failed to reach Hive:", err);
+      await refundScan("network_error");
+      return NextResponse.json({ error: "Failed to reach Hive API" }, { status: 502 });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("Hive error:", response.status, errorText);
+      if (response.status >= 500 && response.status <= 599) {
+        await refundScan(String(response.status));
+      }
       return NextResponse.json(
         { error: `Hive error: ${response.status}`, details: errorText },
         { status: response.status }
@@ -165,7 +299,21 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    const classes: { class: string; value: number }[] = data.output?.[0]?.classes ?? [];
+    const outputs: { classes: { class: string; value: number }[] }[] = data.output ?? [];
+
+    let classes: { class: string; value: number }[];
+
+    if (mediaType === "video" && outputs.length > 0) {
+      const classMap: Record<string, number> = {};
+      for (const frame of outputs) {
+        for (const c of frame.classes ?? []) {
+          classMap[c.class] = Math.max(classMap[c.class] ?? 0, c.value);
+        }
+      }
+      classes = Object.entries(classMap).map(([cls, val]) => ({ class: cls, value: val }));
+    } else {
+      classes = outputs[0]?.classes ?? [];
+    }
 
     const aiScore = classes.find((c) => c.class === "ai_generated")?.value ?? 0;
     const deepfakeScore = classes.find((c) => c.class === "deepfake")?.value ?? 0;
@@ -182,11 +330,21 @@ export async function POST(request: NextRequest) {
       Math.max(aiScore, deepfakeScore, audioScore) * 100
     );
 
-    const isSynthetic =
-      aiScore >= 0.7 ||
-      deepfakeScore >= 0.7 ||
-      audioScore >= 0.7 ||
-      maxModelScore >= 0.5;
+    let isSynthetic: boolean;
+
+    if (mediaType === "video") {
+      isSynthetic = outputs.some((frame) => {
+        const aiGen = (frame.classes ?? []).find((c) => c.class === "ai_generated")?.value ?? 0;
+        const df = (frame.classes ?? []).find((c) => c.class === "deepfake")?.value ?? 0;
+        return aiGen >= 0.9 || df >= 0.9;
+      });
+    } else {
+      isSynthetic =
+        aiScore >= 0.7 ||
+        deepfakeScore >= 0.7 ||
+        audioScore >= 0.7 ||
+        maxModelScore >= 0.5;
+    }
 
     const maxScore = Math.max(aiScore, deepfakeScore, audioScore, maxModelScore);
     const confidence = isSynthetic
@@ -248,6 +406,7 @@ export async function POST(request: NextRequest) {
       generation_sources,
     });
   } catch (error: any) {
+    console.error("Scan failed:", error);
     return NextResponse.json(
       { error: "Scan failed", details: error.message },
       { status: 500 }

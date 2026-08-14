@@ -99,6 +99,48 @@ export async function scanFile(file: File): Promise<ScanResult> {
   return result;
 }
 
+export async function scanUrl(url: string): Promise<ScanResult> {
+  const response = await fetch("/api/scan-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+
+  const data = await response.json();
+
+  if (response.status === 429) {
+    throw new RateLimitError(
+      "You've used your 3 free scans today. Sign up for a free account to get more.",
+      data.retryAfter,
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Scan failed");
+  }
+
+  const result: ScanResult = {
+    id: generateId(),
+    verdict: data.verdict === "synthetic" ? "synthetic" : "real",
+    confidence: data.confidence ?? 50,
+    visual_generation_risk: data.visual_generation_risk ?? 0,
+    ai_generated_score: data.ai_generated_score ?? "0.0%",
+    anomaly_type: data.anomaly_type ?? null,
+    classification_tag: data.classification_tag ?? null,
+    generation_sources: data.generation_sources ?? [],
+    media_type: data.media_type === "video" ? "video" : "image",
+    analysed_at: new Date().toISOString(),
+  };
+
+  await fetch("/api/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(result),
+  });
+
+  return result;
+}
+
 export async function getReport(id: string): Promise<ScanResult | null> {
   const response = await fetch(`/api/report?id=${id}`);
   if (!response.ok) {

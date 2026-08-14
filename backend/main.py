@@ -1,11 +1,16 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import aiohttp
 import shutil
 import uuid
 import os
+from datetime import datetime, timezone
 from inference import predict_fake_real, predict_from_image
 
 app = FastAPI()
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY")
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,8 +21,32 @@ app.add_middleware(
 )
 
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+async def health():
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return {"status": "ok", "timestamp": timestamp, "supabase": "not configured"}
+
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/anonymous_scan_limits?select=ip_address&limit=1"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+    }
+
+    try:
+        timeout = aiohttp.ClientTimeout(total=5)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url, headers=headers) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"Supabase returned {response.status}")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail={
+            "status": "error",
+            "timestamp": timestamp,
+            "supabase": str(e),
+        })
+
+    return {"status": "ok", "timestamp": timestamp}
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):

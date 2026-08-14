@@ -1,10 +1,21 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { scanFile, checkScanLimits, RateLimitError, type ScanResult, type ScanLimits } from "@/lib/api";
+import { scanFile, scanUrl, checkScanLimits, RateLimitError, type ScanResult, type ScanLimits } from "@/lib/api";
 import Toast from "@/components/Toast";
 import Header from "@/components/Header";
 const dottedSvg = `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%233d3a39' stroke-width='1.5' stroke-dasharray='2%2c 16' stroke-linecap='round' rx='8' /%3e%3c/svg%3e")`;
+
+const MEDIA_RULES: { kind: "Image" | "Video" | "Audio"; exts: string[]; maxBytes: number }[] = [
+  { kind: "Image", exts: ["jpg", "jpeg", "png", "webp", "gif", "bmp"], maxBytes: 10 * 1024 * 1024 },
+  { kind: "Video", exts: ["mp4", "mov", "avi", "webm"], maxBytes: 100 * 1024 * 1024 },
+  { kind: "Audio", exts: ["mp3", "wav", "m4a", "ogg"], maxBytes: 50 * 1024 * 1024 },
+];
+
+function classifyFile(fileName: string) {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return MEDIA_RULES.find((rule) => rule.exts.includes(ext)) ?? null;
+}
 
 export default function ScanPage() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -15,6 +26,9 @@ export default function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [limits, setLimits] = useState<ScanLimits | null>(null);
+  const [mode, setMode] = useState<"upload" | "url">("upload");
+  const [urlInput, setUrlInput] = useState("");
+  const [urlPreviewFailed, setUrlPreviewFailed] = useState(false);
 
   const fetchLimits = useCallback(async () => {
     try {
@@ -30,6 +44,15 @@ export default function ScanPage() {
   }, [fetchLimits]);
 
   const handleFile = useCallback((f: File) => {
+    const rule = classifyFile(f.name);
+    if (!rule) {
+      setError("Unsupported file format. Upload an image (jpg, png, webp), video (mp4, mov, avi, webm), or audio (mp3, wav, m4a, ogg) file.");
+      return;
+    }
+    if (f.size > rule.maxBytes) {
+      setError(`File too large. ${rule.kind} files must be under ${Math.round(rule.maxBytes / (1024 * 1024))}MB.`);
+      return;
+    }
     setFile(f);
     setError(null);
     setResult(null);
@@ -48,7 +71,8 @@ export default function ScanPage() {
 
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const pct = Math.min((elapsed / 2000) * 95, 95);
+      const expectedMs = file.type.startsWith("image/") ? 2000 : 15000;
+      const pct = Math.min((elapsed / expectedMs) * 95, 95);
       setProgress(Math.round(pct));
     }, 50);
 
@@ -78,6 +102,52 @@ export default function ScanPage() {
     }
   }, [file, scanning, limits, preview]);
 
+  const startUrlScan = useCallback(async () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed || scanning) return;
+
+    if (!/^https?:\/\//i.test(trimmed)) {
+      setError("Enter a valid URL starting with http:// or https://");
+      return;
+    }
+
+    setScanning(true);
+    setProgress(0);
+    setError(null);
+    setResult(null);
+
+    const startTime = Date.now();
+    const progressInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min((elapsed / 15000) * 95, 95);
+      setProgress(Math.round(pct));
+    }, 50);
+
+    try {
+      const scanResult = await scanUrl(trimmed);
+
+      clearInterval(progressInterval);
+      setProgress(100);
+      setResult(scanResult);
+      setScanning(false);
+
+      if (limits && limits.remaining > 0) {
+        setLimits({ ...limits, remaining: limits.remaining - 1 });
+      }
+    } catch (err) {
+      clearInterval(progressInterval);
+      setScanning(false);
+      setProgress(0);
+
+      if (err instanceof RateLimitError) {
+        setLimits({ remaining: 0, total: 3, window_end: err.retryAfter });
+        setError(err.message);
+      } else {
+        setError(err instanceof Error ? err.message : "Scan failed");
+      }
+    }
+  }, [urlInput, scanning, limits]);
+
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview);
@@ -87,6 +157,9 @@ export default function ScanPage() {
   const isSynthetic = result?.verdict === "synthetic";
   const isImage = file?.type.startsWith("image/");
   const isVideo = file?.type.startsWith("video/");
+  const isAudio = file?.type.startsWith("audio/");
+  const fileKind = file ? classifyFile(file.name)?.kind ?? "File" : null;
+  const looksLikeImageUrl = /^https?:\/\/.+\.(jpe?g|png|webp|gif)(\?.*)?(#.*)?$/i.test(urlInput.trim());
 
   const allSources = result?.generation_sources ?? [];
   const audioPass = allSources.find(
@@ -110,7 +183,28 @@ export default function ScanPage() {
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         {/* ─── Upload Panel (Left) ─── */}
         <div className="rounded-[8px] border border-[#3d3a39] p-6">
-          {!file && !scanning && (
+          {!scanning && (
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-[8px] border border-[#3d3a39] p-1">
+              <button
+                onClick={() => { setMode("upload"); setError(null); }}
+                className={`rounded-[6px] px-4 py-2 text-sm font-semibold transition-colors ${
+                  mode === "upload" ? "bg-[#00d992] text-[#101010]" : "text-[#bdbdbd] hover:text-[#f2f2f2]"
+                }`}
+              >
+                Upload file
+              </button>
+              <button
+                onClick={() => { setMode("url"); setError(null); }}
+                className={`rounded-[6px] px-4 py-2 text-sm font-semibold transition-colors ${
+                  mode === "url" ? "bg-[#00d992] text-[#101010]" : "text-[#bdbdbd] hover:text-[#f2f2f2]"
+                }`}
+              >
+                Scan by URL
+              </button>
+            </div>
+          )}
+
+          {mode === "upload" && !file && !scanning && (
             <div
               className="flex min-h-[300px] cursor-pointer flex-col items-center justify-center gap-4 rounded-[8px] px-6 py-14 transition-colors hover:bg-[#1a1a1a]/50"
               style={{ backgroundImage: dottedSvg }}
@@ -146,8 +240,65 @@ export default function ScanPage() {
             </div>
           )}
 
-          {file && (
+          {mode === "url" && (
+            <div className="flex min-h-[300px] flex-col gap-4">
+              <div>
+                <label htmlFor="scan-url" className="text-xs font-semibold text-[#f2f2f2]">
+                  Media URL
+                </label>
+                <input
+                  id="scan-url"
+                  type="url"
+                  value={urlInput}
+                  disabled={scanning}
+                  onChange={(e) => {
+                    setUrlInput(e.target.value);
+                    setUrlPreviewFailed(false);
+                    setError(null);
+                  }}
+                  placeholder="Paste a direct image or video URL"
+                  className="mt-2 w-full rounded-[6px] border border-[#3d3a39] bg-[#141414] px-4 py-3 text-sm text-[#f2f2f2] placeholder-[#8b949e] outline-none transition-colors focus:border-[#00d992] disabled:opacity-50"
+                />
+                <p className="mt-2 text-xs leading-5 text-[#8b949e]">
+                  Tip: Right-click any image → Copy image address, then paste here.
+                  <br />
+                  Social media links (YouTube, Facebook, Instagram) are not supported —
+                  download the file and upload it directly.
+                </p>
+              </div>
+
+              {looksLikeImageUrl && urlInput.trim() && !urlPreviewFailed && (
+                <div className="overflow-hidden rounded-[6px] border border-[#3d3a39]">
+                  <img
+                    src={urlInput.trim()}
+                    alt="URL preview"
+                    className="w-full object-contain"
+                    style={{ maxHeight: "260px" }}
+                    onError={() => setUrlPreviewFailed(true)}
+                  />
+                </div>
+              )}
+              {looksLikeImageUrl && urlInput.trim() && urlPreviewFailed && (
+                <p className="text-xs text-[#8b949e]">
+                  Preview unavailable. You can still scan this URL.
+                </p>
+              )}
+
+              <button
+                disabled={scanning || !urlInput.trim()}
+                onClick={startUrlScan}
+                className="mt-auto rounded-[6px] bg-[#00d992] px-4 py-2.5 text-sm font-semibold text-[#101010] transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                {scanning ? "Scanning..." : "Start scan"}
+              </button>
+            </div>
+          )}
+
+          {mode === "upload" && file && (
             <div className="space-y-4">
+              <p className="text-xs font-semibold text-[#f2f2f2]">
+                {fileKind} selected: <span className="font-normal text-[#a1a1aa]">{file.name}</span>
+              </p>
               <div className="relative overflow-hidden rounded-[6px]">
                 {isImage && preview && (
                   <img
@@ -165,7 +316,13 @@ export default function ScanPage() {
                     controls
                   />
                 )}
-                {!isImage && !isVideo && (
+                {isAudio && preview && (
+                  <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+                    <audio src={preview} controls className="w-full" />
+                    <p className="text-sm text-[#bdbdbd]">{file.name}</p>
+                  </div>
+                )}
+                {!isImage && !isVideo && !isAudio && (
                   <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
                     <svg
                       width="32"
