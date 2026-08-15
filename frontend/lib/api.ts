@@ -141,6 +141,72 @@ export async function scanUrl(url: string): Promise<ScanResult> {
   return result;
 }
 
+export async function scanVideoViaStorage(file: File): Promise<ScanResult> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase client not configured");
+  }
+
+  const { createBrowserClient } = await import("@supabase/ssr");
+  const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+
+  const ext = file.name.split(".").pop() ?? "mp4";
+  const path = `public-scans/${crypto.randomUUID()}/scan.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("scan-uploads")
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (uploadError) {
+    throw new Error(`Upload failed: ${uploadError.message}`);
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from("scan-uploads")
+    .getPublicUrl(path);
+
+  const response = await fetch("/api/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ supabase_url: publicUrlData.publicUrl }),
+  });
+
+  const data = await response.json();
+
+  if (response.status === 429) {
+    throw new RateLimitError(
+      "You've used your 3 free scans today. Sign up for a free account to get more.",
+      data.retryAfter,
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Scan failed");
+  }
+
+  const result: ScanResult = {
+    id: generateId(),
+    verdict: data.verdict === "synthetic" ? "synthetic" : "real",
+    confidence: data.confidence ?? 50,
+    visual_generation_risk: data.visual_generation_risk ?? 0,
+    ai_generated_score: data.ai_generated_score ?? "0.0%",
+    anomaly_type: data.anomaly_type ?? null,
+    classification_tag: data.classification_tag ?? null,
+    generation_sources: data.generation_sources ?? [],
+    media_type: "video",
+    analysed_at: new Date().toISOString(),
+  };
+
+  await fetch("/api/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(result),
+  });
+
+  return result;
+}
+
 export async function getReport(id: string): Promise<ScanResult | null> {
   const response = await fetch(`/api/report?id=${id}`);
   if (!response.ok) {

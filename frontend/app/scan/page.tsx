@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { scanFile, scanUrl, checkScanLimits, RateLimitError, type ScanResult, type ScanLimits } from "@/lib/api";
+import { scanFile, scanUrl, scanVideoViaStorage, checkScanLimits, RateLimitError, type ScanResult, type ScanLimits } from "@/lib/api";
 import Toast from "@/components/Toast";
 import Header from "@/components/Header";
 const dottedSvg = `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%233d3a39' stroke-width='1.5' stroke-dasharray='2%2c 16' stroke-linecap='round' rx='8' /%3e%3c/svg%3e")`;
@@ -53,6 +53,31 @@ export default function ScanPage() {
       setError(`File too large. ${rule.kind} files must be under ${Math.round(rule.maxBytes / (1024 * 1024))}MB.`);
       return;
     }
+    if (rule.kind === "Video") {
+      const url = URL.createObjectURL(f);
+      const vid = document.createElement("video");
+      vid.preload = "metadata";
+      vid.onloadedmetadata = () => {
+        URL.revokeObjectURL(url);
+        if (vid.duration > 60) {
+          setError(`Video must be under 60 seconds. Your video is ${Math.round(vid.duration)}s.`);
+        } else {
+          setFile(f);
+          setError(null);
+          setResult(null);
+          setPreview(url);
+        }
+      };
+      vid.onerror = () => {
+        URL.revokeObjectURL(url);
+        setFile(f);
+        setError(null);
+        setResult(null);
+        setPreview(url);
+      };
+      vid.src = url;
+      return;
+    }
     setFile(f);
     setError(null);
     setResult(null);
@@ -77,7 +102,9 @@ export default function ScanPage() {
     }, 50);
 
     try {
-      const scanResult = await scanFile(file);
+      const scanResult = file.type.startsWith("video/")
+        ? await scanVideoViaStorage(file)
+        : await scanFile(file);
 
       clearInterval(progressInterval);
       setProgress(100);

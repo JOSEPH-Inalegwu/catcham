@@ -3,7 +3,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: "20mb",
+      bodySizeLimit: "200mb",
     },
   },
   serverExternalPackages: ["sharp"],

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HIVE_GENERATIVE_MODELS } from "@/lib/hive-models";
 import { createClient } from "@supabase/supabase-js";
-import ffmpeg from "fluent-ffmpeg";
-import { writeFile, readFile, unlink } from "fs/promises";
+import { writeFile, unlink } from "fs/promises";
 import { randomUUID } from "crypto";
 import { tmpdir } from "os";
-import { execSync } from "child_process";
 import path from "path";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 const HIVE_API_KEY = process.env.HIVE_API_KEY;
 const MAX_SCANS = 3;
@@ -36,6 +37,22 @@ function getIp(request: NextRequest): string {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     ?? request.headers.get("x-real-ip")
     ?? "127.0.0.1";
+}
+
+function isBlockedHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal")) return true;
+  if (h === "::1" || h === "[::1]") return true;
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (ipv4) {
+    const a = Number(ipv4[1]);
+    const b = Number(ipv4[2]);
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  return false;
 }
 const HIVE_API_URL = "https://api.thehive.ai/api/v3/hive/ai-generated-and-deepfake-content-detection";
 
@@ -176,93 +193,138 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
-
-    const mediaType = classifyFile(file.name);
-    if (!mediaType) {
-      return NextResponse.json(
-        { error: "Unsupported file format. Upload an image (jpg, png, webp), video (mp4, mov, avi, webm), or audio (mp3, wav, m4a, ogg) file." },
-        { status: 415 }
-      );
-    }
-
-    const { maxBytes } = MEDIA_LIMITS[mediaType];
-    if (file.size > maxBytes) {
-      return NextResponse.json(
-        { error: `File too large. ${mediaType[0].toUpperCase() + mediaType.slice(1)} files must be under ${Math.round(maxBytes / (1024 * 1024))}MB.` },
-        { status: 413 }
-      );
-    }
-
+    const contentType = request.headers.get("content-type") ?? "";
     let buffer: Buffer;
-    try {
-      buffer = Buffer.from(await file.arrayBuffer());
-    } catch (err: any) {
-      console.error("Failed to read file:", err);
-      return NextResponse.json({ error: "Failed to read file" }, { status: 500 });
-    }
+    let fileName: string;
+    let fileType: string;
+    let mediaType: MediaType;
+    let storagePathToDelete: string | null = null;
 
-    if (mediaType === "video") {
-      let ffmpegAvailable = false;
+    if (contentType.includes("application/json")) {
+      const body = await request.json().catch(() => null);
+      const supabaseUrl = body?.supabase_url;
+      if (!supabaseUrl || typeof supabaseUrl !== "string") {
+        return NextResponse.json({ error: "Missing supabase_url" }, { status: 400 });
+      }
+      if (!/^https?:\/\//i.test(supabaseUrl)) {
+        return NextResponse.json({ error: "Invalid supabase_url" }, { status: 400 });
+      }
+
+      let parsedUrl: URL;
       try {
-        execSync("ffmpeg -version", { stdio: "ignore", timeout: 5000 });
-        ffmpegAvailable = true;
-      } catch {}
+        parsedUrl = new URL(supabaseUrl);
+      } catch {
+        return NextResponse.json({ error: "Invalid supabase_url" }, { status: 400 });
+      }
 
-      if (ffmpegAvailable) {
-        const inputPath = path.join(tmpdir(), `catcham-${randomUUID()}.mp4`);
+      if (isBlockedHost(parsedUrl.hostname)) {
+        return NextResponse.json({ error: "Invalid supabase_url" }, { status: 400 });
+      }
 
-        try {
-          await writeFile(inputPath, buffer);
+      const prefix = "/storage/v1/object/public/scan-uploads/";
+      const idx = parsedUrl.pathname.indexOf(prefix);
+      if (idx < 0) {
+        return NextResponse.json({ error: "Invalid supabase_url path" }, { status: 400 });
+      }
+      storagePathToDelete = decodeURIComponent(parsedUrl.pathname.substring(idx + prefix.length));
+      fileName = storagePathToDelete.split("/").pop() ?? "video.mp4";
 
-          const duration = await new Promise<number>((resolve, reject) => {
-            (ffmpeg as unknown as { ffprobe: (file: string, cb: (err: Error | null, data: { format: { duration?: number } }) => void) => void }).ffprobe(
-              inputPath,
-              (err, data) => {
-                if (err) return reject(err);
-                resolve(data?.format?.duration ?? 0);
-              }
-            );
-          });
+      const controller = new AbortController();
+      const fetchTimeout = setTimeout(() => controller.abort(), 60000);
+      let mediaResponse: Response;
+      try {
+        mediaResponse = await fetch(supabaseUrl, { signal: controller.signal });
+      } catch {
+        clearTimeout(fetchTimeout);
+        return NextResponse.json({ error: "Could not fetch uploaded file" }, { status: 502 });
+      }
+      clearTimeout(fetchTimeout);
 
-          if (duration > 60) {
-            const outputPath = path.join(tmpdir(), `catcham-trimmed-${randomUUID()}.mp4`);
+      if (!mediaResponse.ok) {
+        await supabase.storage.from("scan-uploads").remove([storagePathToDelete]).catch(() => {});
+        return NextResponse.json({ error: "Could not fetch uploaded file" }, { status: 502 });
+      }
 
-            await new Promise<void>((resolve, reject) => {
-              ffmpeg(inputPath)
-                .outputOptions(["-t", "60", "-c", "copy"])
-                .output(outputPath)
-                .on("end", () => resolve())
-                .on("error", (err) => reject(err))
-                .run();
-            });
+      fileType = (mediaResponse.headers.get("content-type") ?? "video/mp4").split(";")[0].trim();
+      buffer = Buffer.from(await mediaResponse.arrayBuffer());
 
-            buffer = await readFile(outputPath);
-            await Promise.all([unlink(outputPath).catch(() => {}), unlink(inputPath).catch(() => {})]);
-          } else {
-            await unlink(inputPath).catch(() => {});
-          }
-        } catch (err: any) {
-          await unlink(inputPath).catch(() => {});
-          console.error("Video processing failed:", err);
-          return NextResponse.json({ error: "Video must be under 60 seconds" }, { status: 422 });
-        }
+      if (buffer.byteLength > 100 * 1024 * 1024) {
+        await supabase.storage.from("scan-uploads").remove([storagePathToDelete]).catch(() => {});
+        return NextResponse.json(
+          { error: "File too large. Video files must be under 100MB." },
+          { status: 413 }
+        );
+      }
+
+      mediaType = "video";
+    } else {
+      const formData = await request.formData();
+      const file = formData.get("file") as File | null;
+
+      if (!file) {
+        return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      }
+
+      fileName = file.name;
+      fileType = file.type;
+
+      const classified = classifyFile(file.name);
+      if (!classified) {
+        return NextResponse.json(
+          { error: "Unsupported file format. Upload an image (jpg, png, webp), video (mp4, mov, avi, webm), or audio (mp3, wav, m4a, ogg) file." },
+          { status: 415 }
+        );
+      }
+      mediaType = classified;
+
+      const { maxBytes } = MEDIA_LIMITS[mediaType];
+      if (file.size > maxBytes) {
+        return NextResponse.json(
+          { error: `File too large. ${mediaType[0].toUpperCase() + mediaType.slice(1)} files must be under ${Math.round(maxBytes / (1024 * 1024))}MB.` },
+          { status: 413 }
+        );
+      }
+
+      try {
+        buffer = Buffer.from(await file.arrayBuffer());
+      } catch (err: any) {
+        console.error("Failed to read file:", err);
+        return NextResponse.json({ error: "Failed to read file" }, { status: 500 });
       }
     }
+
+    try {
+      if (mediaType === "video") {
+        const tmpPath = path.join(tmpdir(), `catcham-${randomUUID()}.mp4`);
+        try {
+          await writeFile(tmpPath, buffer);
+          const { execSync } = await import("child_process");
+          const probe = execSync(
+            `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tmpPath}"`,
+            { timeout: 10000 }
+          );
+          const duration = parseFloat(probe.toString().trim());
+          if (duration > 60) {
+            return NextResponse.json(
+              { error: "Video must be under 60 seconds. Your video is " + Math.round(duration) + "s." },
+              { status: 422 }
+            );
+          }
+        } catch {
+          // ffprobe not available — proceed without duration check
+        } finally {
+          await unlink(tmpPath).catch(() => {});
+        }
+      }
 
     let hiveInput: { media_base64: string } | FormData;
 
     if (mediaType === "image") {
       hiveInput = { media_base64: buffer.toString("base64") };
     } else {
-      const blob = new Blob([new Uint8Array(buffer)], { type: file.type || "application/octet-stream" });
+      const blob = new Blob([new Uint8Array(buffer)], { type: fileType || "application/octet-stream" });
       const multiForm = new FormData();
-      multiForm.append("media", blob, file.name);
+      multiForm.append("media", blob, fileName);
       hiveInput = multiForm;
     }
 
@@ -405,6 +467,11 @@ export async function POST(request: NextRequest) {
       classification_tag: classificationTag,
       generation_sources,
     });
+    } finally {
+      if (storagePathToDelete) {
+        await supabase.storage.from("scan-uploads").remove([storagePathToDelete]).catch(() => {});
+      }
+    }
   } catch (error: any) {
     console.error("Scan failed:", error);
     return NextResponse.json(
