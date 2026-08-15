@@ -54,28 +54,51 @@ export default function ScanPage() {
       return;
     }
     if (rule.kind === "Video") {
-      const url = URL.createObjectURL(f);
+      const checkUrl = URL.createObjectURL(f);
       const vid = document.createElement("video");
       vid.preload = "metadata";
-      vid.onloadedmetadata = () => {
-        URL.revokeObjectURL(url);
-        if (vid.duration > 60) {
-          setError(`Video must be under 60 seconds. Your video is ${Math.round(vid.duration)}s.`);
-        } else {
-          setFile(f);
-          setError(null);
-          setResult(null);
-          setPreview(url);
-        }
-      };
-      vid.onerror = () => {
-        URL.revokeObjectURL(url);
+
+      let resolved = false;
+      const allow = () => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timer);
+        URL.revokeObjectURL(checkUrl);
+        const previewUrl = URL.createObjectURL(f);
         setFile(f);
         setError(null);
         setResult(null);
-        setPreview(url);
+        setPreview(previewUrl);
       };
-      vid.src = url;
+
+      const timer = setTimeout(() => {
+        console.warn("[video-duration] metadata timeout — allowing upload");
+        allow();
+      }, 5000);
+
+      vid.onloadedmetadata = () => {
+        const dur = vid.duration;
+        URL.revokeObjectURL(checkUrl);
+        clearTimeout(timer);
+        if (resolved) return;
+        resolved = true;
+        if (Number.isFinite(dur) && dur > 60) {
+          setError(`Video must be under 60 seconds. Your video is ${Math.round(dur)}s.`);
+        } else {
+          const previewUrl = URL.createObjectURL(f);
+          setFile(f);
+          setError(null);
+          setResult(null);
+          setPreview(previewUrl);
+        }
+      };
+
+      vid.onerror = () => {
+        clearTimeout(timer);
+        allow();
+      };
+
+      vid.src = checkUrl;
       return;
     }
     setFile(f);
@@ -341,6 +364,10 @@ export default function ScanPage() {
                     className="h-full w-full"
                     style={{ maxHeight: "350px" }}
                     controls
+                    onLoadedData={(e) => {
+                      const v = e.currentTarget;
+                      if (Number.isFinite(v.duration)) v.currentTime = 0.1;
+                    }}
                   />
                 )}
                 {isAudio && preview && (
