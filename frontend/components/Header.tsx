@@ -86,7 +86,7 @@ export default function Header() {
         </div>
         <div className="border-t border-[#f59e0b]/30 bg-[#f59e0b]/10 px-4 py-1.5 text-center">
           <p className="text-xs font-medium text-[#f59e0b]">
-            Enterprise dashboard with advanced forensic analysis — detailed reports, team management, real-time monitoring — coming soon for Pro and Enterprise plans.
+            Advanced forensic analysis coming soon.
           </p>
         </div>
       </header>

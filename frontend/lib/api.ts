@@ -62,7 +62,7 @@ export async function scanFile(file: File): Promise<ScanResult> {
 
   if (response.status === 429) {
     throw new RateLimitError(
-      "You've used your 3 free scans today. Sign up for a free account to get more.",
+      "You've used your 3 free scans today. Come back tomorrow for more.",
       data.retryAfter,
     );
   }
@@ -110,7 +110,7 @@ export async function scanUrl(url: string): Promise<ScanResult> {
 
   if (response.status === 429) {
     throw new RateLimitError(
-      "You've used your 3 free scans today. Sign up for a free account to get more.",
+      "You've used your 3 free scans today. Come back tomorrow for more.",
       data.retryAfter,
     );
   }
@@ -176,7 +176,7 @@ export async function scanVideoViaStorage(file: File): Promise<ScanResult> {
 
   if (response.status === 429) {
     throw new RateLimitError(
-      "You've used your 3 free scans today. Sign up for a free account to get more.",
+      "You've used your 3 free scans today. Come back tomorrow for more.",
       data.retryAfter,
     );
   }
